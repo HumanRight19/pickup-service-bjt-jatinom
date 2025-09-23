@@ -1,0 +1,531 @@
+<template>
+    <SupervisorLayout :user="user" activePage="penugasan">
+        <!-- Container utama dengan rounded background -->
+        <div class="min-h-screen py-8 px-4 md:px-8">
+            <div
+                class="bg-gray-50 dark:bg-gray-950 rounded-3xl shadow-inner p-6 md:p-10"
+            >
+                <!-- Breadcrumb -->
+                <nav class="mb-6 text-sm text-gray-500 dark:text-gray-400">
+                    <ol class="flex space-x-2">
+                        <li>
+                            <a
+                                href="/supervisor"
+                                class="hover:text-indigo-600 transition font-medium"
+                                >Supervisor</a
+                            >
+                        </li>
+                        <li>/</li>
+                        <li
+                            class="text-gray-700 dark:text-gray-200 font-semibold"
+                        >
+                            Penugasan
+                        </li>
+                    </ol>
+                </nav>
+
+                <!-- Header -->
+                <header class="mb-10">
+                    <h1
+                        class="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight"
+                    >
+                        Penjadwalan & Manajemen Petugas
+                    </h1>
+                    <p class="text-gray-600 dark:text-gray-400 mt-2">
+                        Atur jadwal penugasan harian petugas dan kelola daftar
+                        petugas yang tersedia.
+                    </p>
+                </header>
+
+                <!-- Grid Penjadwalan (Kiri) & Manajemen Petugas (Kanan) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Penjadwalan Hari Ini -->
+                    <section
+                        class="bg-white dark:bg-gray-900 rounded-2xl shadow p-6"
+                    >
+                        <h2
+                            class="text-xl font-bold text-gray-800 dark:text-white mb-2"
+                        >
+                            Penjadwalan Hari Ini
+                        </h2>
+                        <p
+                            class="text-sm text-gray-500 dark:text-gray-400 mb-6"
+                        >
+                            Kelola tanggal, blok, dan petugas yang tersedia
+                        </p>
+
+                        <!-- Form Penugasan -->
+                        <form
+                            @submit.prevent="submitJadwal"
+                            class="space-y-4 mb-8"
+                        >
+                            <div>
+                                <label
+                                    class="block text-sm font-medium dark:text-white"
+                                    >Tanggal</label
+                                >
+                                <input
+                                    v-model="jadwalForm.tanggal"
+                                    type="date"
+                                    class="w-full border rounded px-3 py-2 dark:bg-gray-800 dark:text-white"
+                                />
+                                <p
+                                    v-if="jadwalErrors.tanggal"
+                                    class="text-sm text-red-600"
+                                >
+                                    {{ jadwalErrors.tanggal }}
+                                </p>
+                            </div>
+
+                            <div>
+                                <label
+                                    class="block text-sm font-medium dark:text-white"
+                                    >Pilih Blok</label
+                                >
+                                <select
+                                    v-model.number="jadwalForm.blok_id"
+                                    class="w-full border rounded px-3 py-2 dark:bg-gray-800 dark:text-white"
+                                >
+                                    <option disabled value="">
+                                        -- Pilih Blok --
+                                    </option>
+                                    <option
+                                        v-for="blok in bloks"
+                                        :key="blok.id"
+                                        :value="blok.id"
+                                    >
+                                        {{ blok.nama_blok }}
+                                    </option>
+                                </select>
+                                <p
+                                    v-if="jadwalErrors.blok_id"
+                                    class="text-sm text-red-600"
+                                >
+                                    {{ jadwalErrors.blok_id }}
+                                </p>
+                            </div>
+
+                            <div>
+                                <label
+                                    class="block text-sm font-medium dark:text-white"
+                                    >Pilih Petugas</label
+                                >
+                                <select
+                                    v-model="jadwalForm.petugas_id"
+                                    class="w-full border rounded px-3 py-2 dark:bg-gray-800 dark:text-white"
+                                >
+                                    <option disabled value="">
+                                        -- Pilih --
+                                    </option>
+                                    <option
+                                        v-for="u in users"
+                                        :key="u.id"
+                                        :value="u.id"
+                                    >
+                                        {{ u.name }}
+                                    </option>
+                                </select>
+                                <p
+                                    v-if="jadwalErrors.petugas_id"
+                                    class="text-sm text-red-600"
+                                >
+                                    {{ jadwalErrors.petugas_id }}
+                                </p>
+                            </div>
+
+                            <button
+                                type="submit"
+                                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow transition"
+                            >
+                                Simpan Penugasan
+                            </button>
+                        </form>
+
+                        <!-- Tabel Jadwal Hari Ini -->
+                        <div
+                            class="overflow-hidden rounded-lg shadow border custom-scrollbar"
+                        >
+                            <table class="w-full text-sm table-fixed">
+                                <thead
+                                    class="bg-gray-100 dark:bg-gray-800 dark:text-white"
+                                >
+                                    <tr>
+                                        <th class="p-3 text-left">Tanggal</th>
+                                        <th class="p-3 text-left">Petugas</th>
+                                        <th class="p-3 text-left">Blok</th>
+                                        <th class="p-3 text-left">
+                                            Supervisor
+                                        </th>
+                                    </tr>
+                                </thead>
+                            </table>
+                            <!-- Scrollable body -->
+                            <div class="max-h-[400px] overflow-y-auto">
+                                <table class="w-full text-sm table-fixed">
+                                    <tbody>
+                                        <tr
+                                            v-for="jadwal in jadwals.data"
+                                            :key="jadwal.id"
+                                            class="border-t hover:bg-gray-50 dark:hover:bg-gray-700"
+                                        >
+                                            <td class="p-3 dark:text-white">
+                                                {{ jadwal.tanggal }}
+                                            </td>
+                                            <td class="p-3 dark:text-white">
+                                                {{ jadwal.petugas.name }}
+                                            </td>
+                                            <td class="p-3 dark:text-white">
+                                                {{ jadwal.blok.nama_blok }}
+                                            </td>
+                                            <td class="p-3 dark:text-white">
+                                                {{ jadwal.supervisor.name }}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Pagination -->
+                        <div
+                            v-if="jadwals?.links?.length > 0"
+                            class="mt-4 flex justify-center"
+                        >
+                            <nav class="inline-flex flex-wrap gap-1 text-sm">
+                                <template
+                                    v-for="(link, i) in jadwals.links"
+                                    :key="i"
+                                >
+                                    <Link
+                                        v-if="link.url"
+                                        :href="link.url"
+                                        class="px-3 py-1 border rounded"
+                                        :class="{
+                                            'bg-blue-600 text-white':
+                                                link.active,
+                                            'bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600':
+                                                !link.active,
+                                        }"
+                                        v-html="link.label"
+                                        @click.prevent="goToPage(link)"
+                                    />
+                                    <span
+                                        v-else
+                                        class="px-3 py-1 border rounded text-gray-400 cursor-not-allowed"
+                                        v-html="link.label"
+                                    />
+                                </template>
+                            </nav>
+                        </div>
+                    </section>
+
+                    <!-- Manajemen Petugas -->
+                    <section
+                        class="bg-white dark:bg-gray-900 rounded-2xl shadow p-6"
+                    >
+                        <h2
+                            class="text-xl font-bold mb-2 text-gray-800 dark:text-white"
+                        >
+                            Manajemen Petugas
+                        </h2>
+                        <p
+                            class="text-sm text-gray-500 dark:text-gray-400 mb-4"
+                        >
+                            Kelola daftar petugas yang tersedia
+                        </p>
+
+                        <button
+                            class="mb-6 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow transition"
+                            @click="openModal('add')"
+                        >
+                            + Tambah Petugas
+                        </button>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div
+                                v-for="user in users"
+                                :key="user.id"
+                                class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 border border-gray-200 dark:border-gray-700 transition hover:shadow-md"
+                            >
+                                <div
+                                    class="flex justify-between items-center mb-3"
+                                >
+                                    <h3
+                                        class="text-lg font-bold text-gray-800 dark:text-white"
+                                    >
+                                        {{ user.name }}
+                                    </h3>
+                                    <span
+                                        class="text-sm text-gray-500 dark:text-gray-400"
+                                    >
+                                        #{{ user.id }}
+                                    </span>
+                                </div>
+
+                                <p
+                                    class="text-sm text-gray-700 dark:text-gray-300 mb-4"
+                                >
+                                    {{ user.email }}
+                                </p>
+
+                                <div class="flex gap-2">
+                                    <button
+                                        @click="openModal('edit', user)"
+                                        class="flex-1 bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-2 rounded-md text-sm font-medium transition"
+                                    >
+                                        Edit
+                                    </button>
+                                    <button
+                                        @click="confirmDelete(user.id)"
+                                        class="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm font-medium transition"
+                                    >
+                                        Hapus
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Tambah/Edit Petugas -->
+        <div
+            v-if="modalOpen"
+            class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        >
+            <div
+                class="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-xl w-full max-w-md"
+            >
+                <h3 class="text-lg font-bold mb-4 dark:text-white">
+                    {{ modalType === "add" ? "Tambah" : "Edit" }} Petugas
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium dark:text-white"
+                            >Nama</label
+                        >
+                        <input
+                            v-model="form.name"
+                            type="text"
+                            class="w-full border rounded px-3 py-2 dark:bg-gray-800 dark:text-white"
+                        />
+                        <p v-if="errors.name" class="text-sm text-red-600">
+                            {{ errors.name }}
+                        </p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium dark:text-white"
+                            >Email</label
+                        >
+                        <input
+                            v-model="form.email"
+                            type="email"
+                            class="w-full border rounded px-3 py-2 dark:bg-gray-800 dark:text-white"
+                        />
+                        <p v-if="errors.email" class="text-sm text-red-600">
+                            {{ errors.email }}
+                        </p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium dark:text-white"
+                            >Password</label
+                        >
+                        <input
+                            v-model="form.password"
+                            :placeholder="
+                                modalType === 'edit'
+                                    ? 'Biarkan kosong jika tidak ingin mengubah'
+                                    : ''
+                            "
+                            type="password"
+                            class="w-full border rounded px-3 py-2 dark:bg-gray-800 dark:text-white"
+                        />
+                        <p v-if="errors.password" class="text-sm text-red-600">
+                            {{ errors.password }}
+                        </p>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button
+                        @click="modalOpen = false"
+                        class="px-4 py-2 bg-gray-200 dark:bg-gray-700 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        @click="submitForm"
+                        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    >
+                        Simpan
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Konfirmasi Hapus -->
+        <div
+            v-if="confirmDeleteId"
+            class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        >
+            <div
+                class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md text-center dark:bg-gray-900 dark:text-white"
+            >
+                <p class="mb-4 text-lg">Yakin ingin menghapus petugas ini?</p>
+                <div class="flex justify-center gap-4">
+                    <button
+                        @click="confirmDeleteId = null"
+                        class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        @click="deletePetugas"
+                        class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                    >
+                        Hapus
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <ModalError
+            :show="showErrorModal"
+            :message="errorMessage"
+            @close="showErrorModal = false"
+        />
+    </SupervisorLayout>
+</template>
+
+<script setup>
+import SupervisorLayout from "@/Layouts/SupervisorLayout.vue";
+import ModalError from "./Partials/ModalError.vue";
+import { ref } from "vue";
+import { Link, router } from "@inertiajs/vue3";
+
+const showErrorModal = ref(false);
+const errorMessage = ref("");
+
+const props = defineProps({
+    user: Object,
+    users: Array,
+    jadwals: Object,
+    bloks: Array,
+});
+
+const jadwalForm = ref({
+    tanggal: "",
+    petugas_id: "",
+    blok_id: "",
+    supervisor_id: props.user?.id ?? null,
+});
+
+const jadwalErrors = ref({});
+
+function submitJadwal() {
+    jadwalErrors.value = {};
+
+    // 👇 pastikan blok_id dan petugas_id bertipe number
+    jadwalForm.value.blok_id = parseInt(jadwalForm.value.blok_id);
+    jadwalForm.value.petugas_id = parseInt(jadwalForm.value.petugas_id);
+
+    router.post("/supervisor/jadwal", jadwalForm.value, {
+        onError: (e) => {
+            if (e.tanggal) {
+                errorMessage.value = e.tanggal;
+                showErrorModal.value = true;
+            } else {
+                jadwalErrors.value = e;
+            }
+        },
+
+        onSuccess: () => {
+            jadwalForm.value = {
+                tanggal: "",
+                petugas_id: "",
+                blok_id: "",
+                supervisor_id: props.user.id,
+            };
+        },
+    });
+}
+
+//pagination
+//pagination
+function goToPage(link) {
+    if (!link.url) return;
+
+    router.visit(link.url, {
+        preserveState: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            // Bersihkan query string di URL setelah data dimuat
+            window.history.replaceState({}, "", "/supervisor/penugasan");
+        },
+    });
+}
+
+const modalOpen = ref(false);
+const modalType = ref("add");
+const form = ref({ name: "", email: "", password: "" });
+const errors = ref({});
+const confirmDeleteId = ref(null);
+
+function openModal(type, user = null) {
+    modalType.value = type;
+    modalOpen.value = true;
+    errors.value = {};
+    if (type === "edit" && user) {
+        form.value = {
+            name: user.name,
+            email: user.email,
+            password: "",
+            id: user.id,
+        };
+    } else {
+        form.value = { name: "", email: "", password: "" };
+    }
+}
+
+function submitForm() {
+    errors.value = {};
+    const url =
+        modalType.value === "add"
+            ? "/supervisor/petugas"
+            : `/supervisor/petugas/${form.value.id}`;
+    const method = modalType.value === "add" ? "post" : "put";
+
+    router[method](url, form.value, {
+        onError: (e) => (errors.value = e),
+        onSuccess: () => (modalOpen.value = false),
+    });
+}
+
+function confirmDelete(id) {
+    confirmDeleteId.value = id;
+}
+
+function deletePetugas() {
+    router.delete(`/supervisor/petugas/${confirmDeleteId.value}`, {
+        onSuccess: () => (confirmDeleteId.value = null),
+    });
+}
+</script>
+
+<style>
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #4f46e5; /* bisa diganti warna favorit */
+    border-radius: 8px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: #6366f1;
+}
+</style>

@@ -1,4 +1,6 @@
 <template>
+    <Head title="Laporan" />
+
     <SupervisorLayout :user="user" activePage="laporan">
         <div class="min-h-screen py-8 px-4 md:px-8">
             <div
@@ -355,6 +357,7 @@
 </template>
 
 <script setup>
+import { Head } from "@inertiajs/vue3";
 import { Link, useForm } from "@inertiajs/vue3";
 import { ref, watch, computed } from "vue";
 import debounce from "lodash/debounce";

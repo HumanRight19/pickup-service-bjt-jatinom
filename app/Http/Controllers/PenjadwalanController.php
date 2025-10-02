@@ -21,47 +21,6 @@ class PenjadwalanController extends Controller
         $this->middleware(['auth', 'role:supervisor']);
     }
 
-    /**
-     * Tampilkan halaman penjadwalan petugas hari ini
-     */
-    // public function index(Request $request)
-    // {
-    //     $query = PenjadwalanHarian::with(['petugas', 'supervisor', 'blok']); // <--- penting!
-
-    //     // Filter opsional
-    //     if ($request->filled('tanggal')) {
-    //         $query->whereDate('tanggal', $request->input('tanggal'));
-    //     }
-
-    //     if ($request->filled('petugas_id')) {
-    //         $query->where('petugas_id', $request->input('petugas_id'));
-    //     }
-
-    //     if ($request->filled('blok')) {
-    //         $query->where('blok_id', $request->input('blok')); // harusnya blok_id
-    //     }
-
-    //     $today = now()->toDateString();
-
-    //     $jadwals = $query->with([
-    //         'blok.nasabahs' => function ($q) use ($today) {
-    //             $q->with([
-    //                 'titipSetorans' => function ($sub) use ($today) {
-    //                     $sub->whereDate('tanggal_titip', '<', $today);
-    //                 }
-    //             ]);
-    //         }
-    //     ])->orderByDesc('tanggal')->get();
-
-    //     return Inertia::render('Supervisor/PenugasanIndex', [
-    //         'user' => auth()->user(),
-    //         'users' => User::where('role', 'petugas')->get(),
-    //         'jadwals' => $jadwals,
-    //         'filters' => $request->only(['tanggal', 'petugas_id', 'blok']),
-    //         'bloks' => BlokPasar::select('id', 'nama_blok')->get(),
-    //     ]);
-    // }
-
     public function index(Request $request)
     {
         $query = PenjadwalanHarian::with(['petugas', 'supervisor', 'blok']);
@@ -127,36 +86,16 @@ class PenjadwalanController extends Controller
             'ditetapkan_oleh' => auth()->id(),
         ]);
 
-        // setelah sukses buat penjadwalan, langsung proses titipan
-        $titipan = TitipSetoran::where('blok_id', $request->blok_id)
-            // ->where('is_processed', false)
-            ->whereDate('tanggal_titip', '<', $request->tanggal) // <— penting
-            ->get();
-
-        // DB::transaction(function () use ($request, $titipan) {
-        //     foreach ($titipan as $t) {
-        //         $setoran = Setoran::where('nasabah_id', $t->nasabah_id)
-        //             ->whereDate('tanggal', $request->tanggal)
-        //             ->first();
-
-        //         if ($setoran) {
-        //             $setoran->increment('jumlah', $t->jumlah);
-        //         } else {
-        //             Setoran::create([
-        //                 'nasabah_id' => $t->nasabah_id,
-        //                 'tanggal' => $request->tanggal,
-        //                 'jumlah' => $t->jumlah,
-        //                 'user_id' => $request->petugas_id,
-        //                 'supervisor_id' => $request->supervisor_id,
-        //                 'status' => 'sudah',
-        //             ]);
-        //         }
-
-        //         $t->update(['is_processed' => true]);
-        //     }
-        // });
-
         return redirect()->route('supervisor.penugasan')
             ->with('success', 'Penugasan berhasil ditambahkan & titipan diproses.');
     }
+
+    public function destroyJadwal($id)
+    {
+        $jadwal = PenjadwalanHarian::findOrFail($id);
+        $jadwal->delete();
+
+        return back()->with('success', 'Jadwal berhasil dibatalkan.');
+    }
+
 }

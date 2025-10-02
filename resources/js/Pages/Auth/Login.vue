@@ -1,4 +1,6 @@
 <template>
+    <Head title="Login" />
+
     <GuestLayout :card="false">
         <div class="flex w-full h-screen">
             <!-- LEFT (Image / Illustration) -->
@@ -110,6 +112,7 @@
 </template>
 
 <script setup>
+import { Head } from "@inertiajs/vue3";
 import { ref, onMounted } from "vue";
 import { Link, useForm } from "@inertiajs/vue3";
 import GuestLayout from "@/Layouts/GuestLayout.vue";

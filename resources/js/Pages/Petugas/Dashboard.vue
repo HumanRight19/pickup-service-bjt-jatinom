@@ -1,4 +1,6 @@
 <template>
+    <Head title="Setoran Reguler" />
+
     <PetugasLayout :user="petugas" activePage="dashboard">
         <div
             class="min-h-screen py-4 px-4 md:px-8 bg-gray-50 dark:bg-gray-800 transition-colors"
@@ -247,6 +249,7 @@
 </template>
 
 <script setup>
+import { Head } from "@inertiajs/vue3";
 import PetugasLayout from "@/Layouts/PetugasLayout.vue";
 import { Plus, Info, Printer, X } from "lucide-vue-next";
 import { ref, reactive, computed, nextTick, onMounted } from "vue";

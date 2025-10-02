@@ -1,4 +1,6 @@
 <template>
+    <Head title="Penjadwalan" />
+
     <SupervisorLayout :user="user" activePage="penugasan">
         <!-- Container utama dengan rounded background -->
         <div class="min-h-screen py-8 px-4 md:px-8">
@@ -135,7 +137,7 @@
 
                             <button
                                 type="submit"
-                                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow transition"
+                                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-full shadow transition"
                             >
                                 Simpan Penugasan
                             </button>
@@ -156,6 +158,7 @@
                                         <th class="p-3 text-left">
                                             Supervisor
                                         </th>
+                                        <th class="p-3 text-left">Aksi</th>
                                     </tr>
                                 </thead>
                             </table>
@@ -179,6 +182,31 @@
                                             </td>
                                             <td class="p-3 dark:text-white">
                                                 {{ jadwal.supervisor.name }}
+                                            </td>
+                                            <td class="p-3 dark:text-white">
+                                                <template
+                                                    v-if="
+                                                        isCancelable(
+                                                            jadwal.tanggal
+                                                        )
+                                                    "
+                                                >
+                                                    <button
+                                                        @click="
+                                                            openBatalModal(
+                                                                jadwal.id
+                                                            )
+                                                        "
+                                                        class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-full text-sm"
+                                                    >
+                                                        Batal
+                                                    </button>
+                                                </template>
+                                                <template v-else>
+                                                    <span class="text-gray-500"
+                                                        >Tidak bisa batal</span
+                                                    >
+                                                </template>
                                             </td>
                                         </tr>
                                     </tbody>
@@ -235,7 +263,7 @@
                         </p>
 
                         <button
-                            class="mb-6 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow transition"
+                            class="mb-6 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-full shadow transition"
                             @click="openModal('add')"
                         >
                             + Tambah Petugas
@@ -271,13 +299,13 @@
                                 <div class="flex gap-2">
                                     <button
                                         @click="openModal('edit', user)"
-                                        class="flex-1 bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-2 rounded-md text-sm font-medium transition"
+                                        class="flex-1 bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-2 rounded-full text-sm font-medium transition"
                                     >
                                         Edit
                                     </button>
                                     <button
                                         @click="confirmDelete(user.id)"
-                                        class="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm font-medium transition"
+                                        class="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-full text-sm font-medium transition"
                                     >
                                         Hapus
                                     </button>
@@ -292,45 +320,65 @@
         <!-- Modal Tambah/Edit Petugas -->
         <div
             v-if="modalOpen"
-            class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+            @click.self="$emit('update:show', false)"
         >
             <div
-                class="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-xl w-full max-w-md"
+                class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md p-6 rounded-2xl shadow-2xl w-full max-w-md border border-gray-200/40 dark:border-gray-700/40 animate-fadeIn"
             >
-                <h3 class="text-lg font-bold mb-4 dark:text-white">
+                <!-- Header -->
+                <h3
+                    class="text-xl font-semibold mb-6 text-gray-800 dark:text-gray-100 tracking-wide"
+                >
                     {{ modalType === "add" ? "Tambah" : "Edit" }} Petugas
                 </h3>
-                <div class="space-y-4">
+
+                <!-- Form -->
+                <div class="space-y-5">
+                    <!-- Nama -->
                     <div>
-                        <label class="block text-sm font-medium dark:text-white"
-                            >Nama</label
+                        <label
+                            class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300"
                         >
+                            Nama
+                        </label>
                         <input
                             v-model="form.name"
                             type="text"
-                            class="w-full border rounded px-3 py-2 dark:bg-gray-800 dark:text-white"
+                            class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/70 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                         />
-                        <p v-if="errors.name" class="text-sm text-red-600">
+                        <p v-if="errors.name" class="mt-1 text-sm text-red-500">
                             {{ errors.name }}
                         </p>
                     </div>
+
+                    <!-- Email -->
                     <div>
-                        <label class="block text-sm font-medium dark:text-white"
-                            >Email</label
+                        <label
+                            class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300"
                         >
+                            Email
+                        </label>
                         <input
                             v-model="form.email"
                             type="email"
-                            class="w-full border rounded px-3 py-2 dark:bg-gray-800 dark:text-white"
+                            class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/70 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                         />
-                        <p v-if="errors.email" class="text-sm text-red-600">
+                        <p
+                            v-if="errors.email"
+                            class="mt-1 text-sm text-red-500"
+                        >
                             {{ errors.email }}
                         </p>
                     </div>
+
+                    <!-- Password -->
                     <div>
-                        <label class="block text-sm font-medium dark:text-white"
-                            >Password</label
+                        <label
+                            class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300"
                         >
+                            Password
+                        </label>
                         <input
                             v-model="form.password"
                             :placeholder="
@@ -339,23 +387,28 @@
                                     : ''
                             "
                             type="password"
-                            class="w-full border rounded px-3 py-2 dark:bg-gray-800 dark:text-white"
+                            class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/70 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                         />
-                        <p v-if="errors.password" class="text-sm text-red-600">
+                        <p
+                            v-if="errors.password"
+                            class="mt-1 text-sm text-red-500"
+                        >
                             {{ errors.password }}
                         </p>
                     </div>
                 </div>
-                <div class="mt-6 flex justify-end gap-2">
+
+                <!-- Footer -->
+                <div class="mt-8 flex justify-end gap-3">
                     <button
                         @click="modalOpen = false"
-                        class="px-4 py-2 bg-gray-200 dark:bg-gray-700 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+                        class="px-5 py-2.5 rounded-xl bg-gray-200/70 dark:bg-gray-700/70 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-200 shadow-sm"
                     >
                         Batal
                     </button>
                     <button
                         @click="submitForm"
-                        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                        class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600 transition-all duration-200 shadow-md"
                     >
                         Simpan
                     </button>
@@ -364,29 +417,15 @@
         </div>
 
         <!-- Konfirmasi Hapus -->
-        <div
-            v-if="confirmDeleteId"
-            class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-        >
-            <div
-                class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md text-center dark:bg-gray-900 dark:text-white"
-            >
-                <p class="mb-4 text-lg">Yakin ingin menghapus petugas ini?</p>
-                <div class="flex justify-center gap-4">
-                    <button
-                        @click="confirmDeleteId = null"
-                        class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
-                    >
-                        Batal
-                    </button>
-                    <button
-                        @click="deletePetugas"
-                        class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                    >
-                        Hapus
-                    </button>
-                </div>
-            </div>
+        <div>
+            <!-- Modal Reusable -->
+            <ModalKonfirmasi
+                :show="confirmDeleteId"
+                title="Konfirmasi Hapus"
+                message="Yakin ingin menghapus petugas ini?"
+                @cancel="confirmDeleteId = null"
+                @confirm="deletePetugas"
+            />
         </div>
 
         <ModalError
@@ -394,17 +433,35 @@
             :message="errorMessage"
             @close="showErrorModal = false"
         />
+
+        <ConfirmBatalModal
+            :show="showConfirmBatal"
+            @close="showConfirmBatal = false"
+            @confirm="batalJadwal"
+        />
+
+        <ToastNotification :show="showToast" :message="toastMessage" />
     </SupervisorLayout>
 </template>
 
 <script setup>
+import { Head } from "@inertiajs/vue3";
 import SupervisorLayout from "@/Layouts/SupervisorLayout.vue";
 import ModalError from "./Partials/ModalError.vue";
+import ModalKonfirmasi from "./Partials/ModalKonfirmasi.vue";
+import ConfirmBatalModal from "@/Components/Modals/ConfirmBatalModal.vue";
+import ToastNotification from "@/Components/ToastNotification.vue";
 import { ref } from "vue";
 import { Link, router } from "@inertiajs/vue3";
 
 const showErrorModal = ref(false);
 const errorMessage = ref("");
+
+const showConfirmBatal = ref(false);
+const jadwalToDelete = ref(null);
+
+const showToast = ref(false);
+const toastMessage = ref("");
 
 const props = defineProps({
     user: Object,
@@ -412,6 +469,47 @@ const props = defineProps({
     jadwals: Object,
     bloks: Array,
 });
+
+// Fungsi cek apakah jadwal bisa dibatalkan
+function isCancelable(tanggal) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // reset jam agar hanya tanggal yang dibandingkan
+
+    const jadwalDate = new Date(tanggal);
+    jadwalDate.setHours(0, 0, 0, 0);
+
+    // hanya boleh batal jika tanggal = hari ini atau besok
+    const diffTime = jadwalDate - today;
+    const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+    return diffDays >= 0 && diffDays <= 1;
+}
+
+function openBatalModal(id) {
+    jadwalToDelete.value = id;
+    showConfirmBatal.value = true;
+}
+
+// Fungsi untuk membatalkan jadwal
+function batalJadwal() {
+    if (!jadwalToDelete.value) return;
+
+    router.delete(route("supervisor.jadwal.destroy", jadwalToDelete.value), {
+        onSuccess: () => {
+            showConfirmBatal.value = false;
+            jadwalToDelete.value = null;
+
+            toastMessage.value = "Jadwal berhasil dibatalkan!";
+            showToast.value = true;
+
+            setTimeout(() => (showToast.value = false), 3000);
+        },
+        onError: () => {
+            errorMessage.value = "Gagal membatalkan jadwal.";
+            showErrorModal.value = true;
+        },
+    });
+}
 
 const jadwalForm = ref({
     tanggal: "",
@@ -450,7 +548,6 @@ function submitJadwal() {
     });
 }
 
-//pagination
 //pagination
 function goToPage(link) {
     if (!link.url) return;
@@ -508,6 +605,11 @@ function confirmDelete(id) {
 function deletePetugas() {
     router.delete(`/supervisor/petugas/${confirmDeleteId.value}`, {
         onSuccess: () => (confirmDeleteId.value = null),
+        onError: () => {
+            // Opsional: tampilkan alert atau toast
+            console.error("Gagal menghapus petugas");
+            confirmDeleteId.value = null;
+        },
     });
 }
 </script>
@@ -527,5 +629,18 @@ function deletePetugas() {
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background-color: #6366f1;
+}
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+.animate-fadeIn {
+    animation: fadeIn 0.25s ease-out;
 }
 </style>

@@ -1,4 +1,6 @@
 <template>
+    <Head title="Blok Pasar" />
+
     <SupervisorLayout :user="user" activePage="blokpasar">
         <!-- Container utama -->
         <div class="min-h-screen py-8 px-4 md:px-8">
@@ -88,7 +90,7 @@
                         <div class="flex justify-end">
                             <button
                                 type="submit"
-                                class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition"
+                                class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-full font-semibold text-sm transition"
                             >
                                 <PlusIcon class="w-4 h-4" />
                                 Tambah Blok
@@ -184,6 +186,7 @@
 </template>
 
 <script setup>
+import { Head } from "@inertiajs/vue3";
 import { ref } from "vue";
 import { router } from "@inertiajs/vue3";
 import { PencilIcon, TrashIcon, PlusIcon } from "@heroicons/vue/24/solid";

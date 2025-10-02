@@ -1,4 +1,6 @@
 <template>
+    <Head title="Dashboard" />
+
     <SupervisorLayout :user="user" activePage="dashboard">
         <!-- Container utama dengan rounded background -->
         <div class="min-h-screen py-8 px-4 md:px-8">
@@ -129,6 +131,7 @@
 </template>
 
 <script setup lang="ts">
+import { Head } from "@inertiajs/vue3";
 import { ref, computed } from "vue";
 import axios from "axios";
 import ChartCard from "@/Components/ChartCard.vue";

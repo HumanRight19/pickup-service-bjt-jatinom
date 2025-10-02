@@ -1,4 +1,6 @@
 <template>
+    <Head title="Detail Nasabah" />
+
     <SupervisorLayout :user="authUser" activePage="nasabah">
         <div class="min-h-screen py-8 px-4 md:px-8">
             <div
@@ -128,34 +130,92 @@
                         <!-- Nomor Rekening -->
                         <div class="flex items-start gap-2">
                             <span class="text-yellow-500 mt-1">🏦</span>
-                            <div>
-                                <p
-                                    class="text-sm text-gray-500 dark:text-gray-300"
+                            <div class="flex items-center gap-2">
+                                <div>
+                                    <p
+                                        class="text-sm text-gray-500 dark:text-gray-300"
+                                    >
+                                        No. Rekening
+                                    </p>
+                                    <transition name="fade" mode="out-in">
+                                        <p
+                                            :key="showFullRekening"
+                                            class="text-gray-700 dark:text-white font-medium"
+                                        >
+                                            {{
+                                                showFullRekening
+                                                    ? formatRekening(
+                                                          nasabah.nomor_rekening,
+                                                          false
+                                                      )
+                                                    : formatRekening(
+                                                          nasabah.nomor_rekening,
+                                                          true
+                                                      )
+                                            }}
+                                        </p>
+                                    </transition>
+                                </div>
+                                <button
+                                    @click="toggleShowRekening"
+                                    class="ml-1 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                                    title="Lihat / Sembunyikan Rekening"
                                 >
-                                    No. Rekening
-                                </p>
-                                <p
-                                    class="text-gray-700 dark:text-white font-medium"
-                                >
-                                    {{ nasabah.nomor_rekening || "-" }}
-                                </p>
+                                    <Eye
+                                        v-if="!showFullRekening"
+                                        class="w-5 h-5 text-gray-600 dark:text-gray-300"
+                                    />
+                                    <EyeOff
+                                        v-else
+                                        class="w-5 h-5 text-gray-600 dark:text-gray-300"
+                                    />
+                                </button>
                             </div>
                         </div>
 
                         <!-- Nomor HP -->
                         <div class="flex items-start gap-2">
                             <span class="text-purple-500 mt-1">📞</span>
-                            <div>
-                                <p
-                                    class="text-sm text-gray-500 dark:text-gray-300"
+                            <div class="flex items-center gap-2">
+                                <div>
+                                    <p
+                                        class="text-sm text-gray-500 dark:text-gray-300"
+                                    >
+                                        No. HP
+                                    </p>
+                                    <transition name="fade" mode="out-in">
+                                        <p
+                                            :key="showFullHp"
+                                            class="text-gray-700 dark:text-white font-medium"
+                                        >
+                                            {{
+                                                showFullHp
+                                                    ? formatHp(
+                                                          nasabah.nomor_hp,
+                                                          false
+                                                      )
+                                                    : formatHp(
+                                                          nasabah.nomor_hp,
+                                                          true
+                                                      )
+                                            }}
+                                        </p>
+                                    </transition>
+                                </div>
+                                <button
+                                    @click="toggleShowHp"
+                                    class="ml-1 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                                    title="Lihat / Sembunyikan HP"
                                 >
-                                    No. HP
-                                </p>
-                                <p
-                                    class="text-gray-700 dark:text-white font-medium"
-                                >
-                                    {{ nasabah.nomor_hp || "-" }}
-                                </p>
+                                    <Eye
+                                        v-if="!showFullHp"
+                                        class="w-5 h-5 text-gray-600 dark:text-gray-300"
+                                    />
+                                    <EyeOff
+                                        v-else
+                                        class="w-5 h-5 text-gray-600 dark:text-gray-300"
+                                    />
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -274,6 +334,8 @@
 </template>
 
 <script setup>
+import { Head } from "@inertiajs/vue3";
+import { Eye, EyeOff } from "lucide-vue-next";
 import { ref, computed } from "vue";
 import SupervisorLayout from "@/Layouts/SupervisorLayout.vue";
 import ChartCardDetail from "@/Components/ChartCardDetail.vue";
@@ -284,6 +346,63 @@ const props = defineProps({
     grafik: Object,
     tabel: Array, // <- gunakan ini
 });
+
+// ====== Toggle rekening show/hide ======
+const showFullRekening = ref(false);
+const showFullHp = ref(false);
+
+function toggleShowRekening() {
+    showFullRekening.value = !showFullRekening.value;
+}
+
+function toggleShowHp() {
+    showFullHp.value = !showFullHp.value;
+}
+
+/**
+ * Format rekening sesuai pola:
+ * - Grouping: 1 digit, 3 digit, sisa, 1 digit
+ * - Jika masked = true → dari digit ke-8 diganti '*'
+ */
+function formatRekening(raw, masked = true) {
+    if (!raw) return "-";
+    const digits = ("" + raw).replace(/\D/g, "");
+    const n = digits.length;
+    if (n === 0) return "";
+
+    const result = [];
+    for (let i = 0; i < n; i++) {
+        const pos = i + 1;
+        if (masked && pos >= 8) {
+            result.push("*");
+        } else {
+            result.push(digits[i]);
+        }
+    }
+
+    const g1 = result.slice(0, 1).join("");
+    const g2 = result.slice(1, 4).join("");
+    const gMiddle = n > 4 ? result.slice(4, n - 1).join("") : "";
+    const gLast = n > 1 ? result.slice(-1).join("") : "";
+
+    return [g1, g2, gMiddle, gLast].filter(Boolean).join("-");
+}
+
+/**
+ * Format Nomor HP
+ * - Jika masked = true → 4 digit terakhir jadi "****"
+ */
+function formatHp(raw, masked = true) {
+    if (!raw) return "-";
+    const digits = ("" + raw).replace(/\D/g, "");
+    const n = digits.length;
+    if (n === 0) return "";
+
+    if (masked && n > 4) {
+        return digits.slice(0, n - 4) + "****";
+    }
+    return digits;
+}
 
 // User
 const authUser = computed(
@@ -325,3 +444,14 @@ const totalSetoran = computed(() => {
     return combinedSetorans.value.reduce((sum, d) => sum + (d.jumlah || 0), 0);
 });
 </script>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.3s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
+</style>

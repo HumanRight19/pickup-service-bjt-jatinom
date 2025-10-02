@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class Nasabah extends Model
 {
@@ -16,6 +17,14 @@ class Nasabah extends Model
                 $uuid = (string) Str::uuid();
                 $nasabah->uuid = $uuid;
                 $nasabah->qr_token = $uuid; // sama persis
+            }
+        });
+
+        // Hapus QR code saat model dihapus
+        static::deleting(function ($nasabah) {
+            // Pastikan qr_path ada sebelum hapus file
+            if (!empty($nasabah->qr_path) && Storage::disk('local')->exists($nasabah->qr_path)) {
+                Storage::disk('local')->delete($nasabah->qr_path);
             }
         });
     }

@@ -25,6 +25,8 @@ class SupervisorLaporanController extends Controller
             'blok' => null,
             'nasabah' => null,
             'supervisor' => null,
+            'jenis_setoran' => null,
+            'status' => null,
             'page' => 1,
         ]);
 
@@ -43,10 +45,10 @@ class SupervisorLaporanController extends Controller
                 'id' => $s->id,
                 'tanggal' => Carbon::parse($s->tanggal)->format('Y-m-d'),
                 'created_at' => $s->created_at,
-                'tanggal_waktu' => Carbon::parse($s->created_at)->format('Y-m-d H:i:s'), // 🔑 kolom gabungan
+                'tanggal_waktu' => Carbon::parse($s->created_at)->format('Y-m-d H:i:s'),
                 'petugas' => $s->petugas->name ?? '-',
                 'nasabah' => $s->nasabah->nama ?? '-',
-                'umplung' => $s->nasabah->nama_umplung ?? '-', // ✅ ambil langsung dari kolom
+                'umplung' => $s->nasabah->nama_umplung ?? '-',
                 'blok' => $s->nasabah->blokPasar->nama_blok ?? '-',
                 'supervisor' => $s->supervisor->name ?? '-',
                 'jumlah' => $s->jumlah,
@@ -68,7 +70,7 @@ class SupervisorLaporanController extends Controller
                 'id' => $t->id,
                 'tanggal' => Carbon::parse($t->tanggal_titip)->format('Y-m-d'),
                 'created_at' => $t->created_at,
-                'tanggal_waktu' => Carbon::parse($t->created_at)->format('Y-m-d H:i:s'), // 🔑 kolom gabungan
+                'tanggal_waktu' => Carbon::parse($t->created_at)->format('Y-m-d H:i:s'),
                 'petugas' => $t->petugas->name ?? '-',
                 'nasabah' => $t->nasabah->nama ?? '-',
                 'blok' => $t->nasabah->blokPasar->nama_blok ?? '-',
@@ -103,50 +105,45 @@ class SupervisorLaporanController extends Controller
             $key = $jenis . '_' . $setoran->id;
             $base = $allSetoran->get($key);
 
-            // --- contoh penambahan kolom gabungan di request ---
             $tanggalWaktu = Carbon::parse($r->created_at)->format('Y-m-d H:i:s');
 
             // UPDATE APPROVED (lama & baru)
-            if ($r->type === 'update' && $r->status === 'approved') {
-                if ($base) {
-                    $allSetoran->put($key . '_update_old_' . $r->id, array_merge($base, [
-                        'jumlah' => $r->jumlah_lama,
-                        'created_at' => $r->created_at,
-                        'tanggal_waktu' => $tanggalWaktu,
-                        'status_request' => $r->status,
-                        'tipe_request' => $r->type,
-                        'status' => 'Update Approved (Old)',
-                    ]));
+            if ($r->type === 'update' && $r->status === 'approved' && $base) {
+                $allSetoran->put($key . '_update_old_' . $r->id, array_merge($base, [
+                    'jumlah' => $r->jumlah_lama,
+                    'created_at' => $r->created_at,
+                    'tanggal_waktu' => $tanggalWaktu,
+                    'status_request' => $r->status,
+                    'tipe_request' => $r->type,
+                    'status' => 'Update Approved (Old)',
+                ]));
 
-                    $allSetoran->put($key . '_update_new_' . $r->id, array_merge($base, [
-                        'jumlah' => $r->jumlah_baru,
-                        'created_at' => $r->created_at,
-                        'tanggal_waktu' => $tanggalWaktu,
-                        'status_request' => $r->status,
-                        'tipe_request' => $r->type,
-                        'status' => 'Update Approved',
-                    ]));
-                }
+                $allSetoran->put($key . '_update_new_' . $r->id, array_merge($base, [
+                    'jumlah' => $r->jumlah_baru,
+                    'created_at' => $r->created_at,
+                    'tanggal_waktu' => $tanggalWaktu,
+                    'status_request' => $r->status,
+                    'tipe_request' => $r->type,
+                    'status' => 'Update Approved',
+                ]));
             }
 
             // BATAL APPROVED
-            if ($r->type === 'batal' && $r->status === 'approved') {
-                if ($base) {
-                    $allSetoran->put($key . '_batal_' . $r->id, array_merge($base, [
-                        'created_at' => $r->created_at,
-                        'tanggal_waktu' => $tanggalWaktu,
-                        'status_request' => $r->status,
-                        'tipe_request' => $r->type,
-                        'status' => 'Batal Approved',
-                    ]));
-                    $allSetoran->put($key, array_merge($base, [
-                        'created_at' => $r->created_at,
-                        'tanggal_waktu' => $tanggalWaktu,
-                        'status_request' => $r->status,
-                        'tipe_request' => $r->type,
-                        'status' => 'Batal Approved',
-                    ]));
-                }
+            if ($r->type === 'batal' && $r->status === 'approved' && $base) {
+                $allSetoran->put($key . '_batal_' . $r->id, array_merge($base, [
+                    'created_at' => $r->created_at,
+                    'tanggal_waktu' => $tanggalWaktu,
+                    'status_request' => $r->status,
+                    'tipe_request' => $r->type,
+                    'status' => 'Batal Approved',
+                ]));
+                $allSetoran->put($key, array_merge($base, [
+                    'created_at' => $r->created_at,
+                    'tanggal_waktu' => $tanggalWaktu,
+                    'status_request' => $r->status,
+                    'tipe_request' => $r->type,
+                    'status' => 'Batal Approved',
+                ]));
             }
 
             // PENDING / REJECTED
@@ -167,6 +164,19 @@ class SupervisorLaporanController extends Controller
                     'status' => ucfirst($r->type) . ' ' . ucfirst($r->status),
                 ]);
             }
+        }
+
+        // === Terapkan filter blok, jenis_setoran & status setelah gabungan semua data ===
+        if (!empty($filter['blok'])) {
+            $allSetoran = $allSetoran->filter(fn($s) => $s['blok'] === $filter['blok']);
+        }
+
+        if (!empty($filter['jenis_setoran'])) {
+            $allSetoran = $allSetoran->filter(fn($s) => $s['jenis_setoran'] === $filter['jenis_setoran']);
+        }
+
+        if (!empty($filter['status'])) {
+            $allSetoran = $allSetoran->filter(fn($s) => $s['status'] === $filter['status']);
         }
 
         // === Sorting & pagination manual ===
@@ -190,28 +200,29 @@ class SupervisorLaporanController extends Controller
             ->groupBy(fn($x) => $x['jenis_setoran'] . '_' . $x['id'])
             ->map(fn($rows) => $rows->sortBy('created_at')->last());
 
-        // 🔹 Total per page
         $totalJumlahPage = $currentPageItems
             ->groupBy(fn($x) => $x['jenis_setoran'] . '_' . $x['id'])
             ->map(fn($rows) => $rows->sortBy('created_at')->last())
             ->filter(fn($x) => $x['status'] !== 'Batal Approved')
             ->sum('jumlah');
 
-        // 🔹 Grand total (semua page)
         $grandTotal = $finalSetoran
             ->filter(fn($x) => $x['status'] !== 'Batal Approved')
             ->sum('jumlah');
+
+        // Ambil dari semua setoran & request sebelum filter blok/jenis/status
+        $allStatusList = $allSetoran->pluck('status')->unique()->values();
 
         return Inertia::render('Supervisor/Laporan', [
             'user' => Auth::user(),
             'laporan' => $paginated,
             'totalJumlahPage' => $totalJumlahPage,
-            'grandTotal' => $grandTotal, // ganti nama biar lebih jelas
+            'grandTotal' => $grandTotal,
             'petugasList' => User::where('role', 'petugas')->get(['id', 'name']),
             'blokList' => BlokPasar::select('nama_blok')->distinct()->pluck('nama_blok'),
             'filters' => $filter,
             'jenisSetoranList' => ['Reguler', 'Titip'],
-            'statusList' => $laporanCollection->pluck('status')->unique()->values(),
+            'statusList' => $allStatusList,
         ]);
     }
 

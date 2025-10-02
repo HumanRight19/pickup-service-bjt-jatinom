@@ -188,6 +188,8 @@ Route::middleware(['auth', 'role:supervisor', 'check.ip:supervisor'])->group(fun
 
     Route::get('/supervisor/penugasan', [PenjadwalanController::class, 'index'])->name('supervisor.penugasan');
     Route::post('/supervisor/jadwal', [PenjadwalanController::class, 'store'])->name('supervisor.jadwal.store');
+    Route::delete('/supervisor/jadwal/{id}', [PenjadwalanController::class, 'destroyJadwal'])
+        ->name('supervisor.jadwal.destroy');
 
     // List nasabah
     Route::match(['get', 'post'], '/supervisor/nasabah', [NasabahAdminController::class, 'index'])

@@ -314,25 +314,19 @@ class NasabahAdminController extends Controller
         ]);
 
         $rows = Excel::toArray(new NasabahImport, $request->file('file'))[0];
+        $inserted = 0;
 
         foreach ($rows as $index => $row) {
-            // Skip baris kosong
-            if (!isset($row['nama']) || empty(trim($row['nama']))) {
+            if (!isset($row['nama']) || empty(trim($row['nama'])))
                 continue;
-            }
 
-            // Validasi nomor rekening
             $nomorRekening = $row['nomor_rekening'] ?? null;
-            if (!$nomorRekening || !is_numeric($nomorRekening)) {
-                continue; // Skip jika nomor rekening tidak valid
-            }
+            if (!$nomorRekening || !is_numeric($nomorRekening))
+                continue;
 
-            // Cek nomor rekening unik
-            if (Nasabah::where('nomor_rekening', $nomorRekening)->exists()) {
-                continue; // Skip jika sudah ada
-            }
+            if (Nasabah::where('nomor_rekening', $nomorRekening)->exists())
+                continue;
 
-            // Mapping nama blok → blok_pasar_id
             $blok = BlokPasar::firstOrCreate([
                 'nama_blok' => $row['blok'] ?? 'Tanpa Blok'
             ]);
@@ -351,23 +345,29 @@ class NasabahAdminController extends Controller
             ]);
 
             $this->generateQrWithText($nasabah);
+            $inserted++;
         }
 
-        return back()->with('success', 'Import nasabah berhasil dan QR code dibuat.');
+        if ($inserted > 0) {
+            return back()->with('success', "Import nasabah berhasil. Total: $inserted data.");
+        } else {
+            return back()->withErrors(['file' => 'Tidak ada data valid yang bisa diimport.']);
+        }
     }
 
     public function destroy($id)
     {
         $nasabah = Nasabah::findOrFail($id);
 
-        $qrPath = $nasabah->qr_path;
-        if ($qrPath && Storage::exists($qrPath)) {
-            Storage::delete($qrPath);
+        // hapus file qr langsung di controller
+        if (!empty($nasabah->qr_path) && Storage::disk('local')->exists($nasabah->qr_path)) {
+            Storage::disk('local')->delete($nasabah->qr_path);
         }
 
-        $nasabah->delete();
+        // lalu hapus modelnya
+        $nasabah->forceDelete(); // atau delete() biasa
 
-        return back()->with('success', 'Nasabah dihapus.');
+        return back()->with('success', 'Nasabah dan QR code terhapus.');
     }
 
     /**
@@ -376,35 +376,43 @@ class NasabahAdminController extends Controller
     private function generateQrWithText(Nasabah $nasabah): void
     {
         $qrDir = storage_path('app/qrcodes');
-        if (!file_exists($qrDir)) {
+
+        // Pastikan direktori ada
+        if (!is_dir($qrDir)) {
             mkdir($qrDir, 0755, true);
         }
 
         $token = $nasabah->qr_token;
 
-        // --- Tentukan teks yang mau ditulis di bawah QR ---
+        // Tentukan teks yang mau ditulis di bawah QR
         $text = trim((string) ($nasabah->nama_umplung ?: $nasabah->nama));
         if ($text === '') {
             $text = 'nasabah';
         }
 
-        // --- Nama file aman untuk storage (gunakan qr_token) ---
+        // Nama file permanen di storage
         $fileName = "{$token}.png";
         $filePath = $qrDir . '/' . $fileName;
 
-        // 1) Generate QR ke file temporary
+        // 1) Generate QR ke temporary file
         $tempFile = tempnam(sys_get_temp_dir(), 'qr_') . '.png';
-        $qrUrl = url('/nasabah/by-qr/' . $token); // URL yang discan
-        QrCode::format('png')->size(200)->margin(1)->generate($qrUrl, $tempFile);
+        QrCode::format('png')
+            ->size(200)
+            ->margin(1)
+            ->generate(url("/nasabah/by-qr/{$token}"), $tempFile);
 
-        // 2) Tambahkan teks di bawah QR dan simpan permanen
+        // 2) Tambahkan teks di bawah QR dan simpan langsung ke path permanen
         $this->addTextBelowQr($tempFile, $text, $filePath);
 
         // 3) Hapus temporary file
-        unlink($tempFile);
+        if (file_exists($tempFile)) {
+            unlink($tempFile);
+        }
 
-        // 4) Update kolom qr_path
-        $nasabah->update(['qr_path' => "qrcodes/{$fileName}"]);
+        // 4) Update kolom qr_path di database
+        $nasabah->update([
+            'qr_path' => "qrcodes/{$fileName}",
+        ]);
     }
 
     /**
@@ -449,4 +457,5 @@ class NasabahAdminController extends Controller
         imagedestroy($img);
         imagedestroy($qrImg);
     }
+
 }

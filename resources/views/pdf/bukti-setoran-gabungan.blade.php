@@ -109,6 +109,26 @@
 
     $jumlahSetoran = $model->jumlah ?? 0;
     $nasabah = $model->nasabah; // 🔑 cukup ambil dari relasi
+
+     // 👉 fungsi format rekening
+    function formatRekening($raw) {
+        $digits = preg_replace('/\D+/', '', $raw);
+        $n = strlen($digits);
+        if ($n === 0) return '';
+
+        $masked = [];
+        for ($i = 0; $i < $n; $i++) {
+            $pos = $i + 1;
+            $masked[] = ($pos >= 8) ? '*' : $digits[$i];
+        }
+
+        $g1 = ($n >= 1) ? substr(implode('', $masked), 0, 1) : '';
+        $g2 = ($n > 1) ? substr(implode('', $masked), 1, 3) : '';
+        $gLast = ($n > 1) ? substr(implode('', $masked), -1) : '';
+        $gMiddle = ($n > 4) ? implode('', array_slice($masked, 4, $n - 5)) : '';
+
+        return implode('-', array_filter([$g1, $g2, $gMiddle, $gLast]));
+    }
 @endphp
 
 
@@ -135,7 +155,7 @@
     <div class="center title-main">
         TANDA TERIMA {{ strtoupper($tipe === 'titip' ? 'TITIP SETORAN' : 'SETORAN') }}
     </div>
-    <div class="copy-title">Untuk PETUGAS</div>
+    {{-- <div class="copy-title">Untuk PETUGAS</div> --}}
 
     <div class="center amount">
         Rp{{ number_format($jumlahSetoran, 0, ',', '.') }}
@@ -144,7 +164,7 @@
     <table class="data-table">
         <tr><td class="label">Nama</td><td class="value">{{ $nasabah->nama }}</td></tr>
         <tr><td class="label">Umplung</td><td class="value">{{ $nasabah->nama_umplung }}</td></tr>
-        <tr><td class="label">No. Rekening</td><td class="value">{{ $nasabah->nomor_rekening }}</td></tr>
+        <tr><td class="label">No. Rekening</td><td class="value">{{ formatRekening($nasabah->nomor_rekening) }}</td></tr>
         <tr><td class="label">Blok</td><td class="value">{{ $nasabah->blokPasar->nama_blok ?? '-' }}</td></tr>
         <tr><td class="label">Tanggal</td><td class="value">{{ $tanggalSetoran }}</td></tr>
         <tr><td class="label">Petugas</td><td class="value">{{ $petugas->name }}</td></tr>
@@ -155,51 +175,51 @@
 </div>
 
 {{-- PEMISAH --}}
-<div class="separator">--- POTONG DI SINI ---</div>
+{{-- <div class="separator">--- POTONG DI SINI ---</div> --}}
 
 {{-- RESI NASABAH --}}
-<div class="section">
-    <table class="header-table">
-        <tr>
-            <td class="logo-cell">
-                 @if(app()->runningInConsole())
+{{-- <div class="section"> --}}
+    {{-- <table class="header-table"> --}}
+        {{-- <tr> --}}
+            {{-- <td class="logo-cell"> --}}
+                 {{-- @if(app()->runningInConsole()) --}}
                     {{-- kalau dipanggil lewat console (PDF/dompdf) --}}
-                    <img src="{{ public_path('images/logo.png') }}" alt="Logo" width="80">
-                @else
+                    {{-- <img src="{{ public_path('images/logo.png') }}" alt="Logo" width="80"> --}}
+                {{-- @else --}}
                     {{-- kalau preview di browser --}}
-                    <img src="{{ asset('images/logo.png') }}" alt="Logo" width="80">
-                @endif
-            </td>
-            <td class="date-cell">
+                    {{-- <img src="{{ asset('images/logo.png') }}" alt="Logo" width="80"> --}}
+                {{-- @endif --}}
+            {{-- </td> --}}
+            {{-- <td class="date-cell">
                 {{ $tanggal }}<br>
                 {{ $jam }}
-            </td>
-        </tr>
-    </table>
+            </td> --}}
+        {{-- </tr> --}}
+    {{-- </table> --}}
 
-    <div class="center title-main">
+    {{-- <div class="center title-main">
         TANDA TERIMA <br>
         {{ strtoupper($tipe === 'titip' ? 'TITIP SETORAN' : 'SETORAN') }}
-    </div>
+    </div> --}}
 
-    <div class="copy-title">Untuk NASABAH</div>
+    {{-- <div class="copy-title">Untuk NASABAH</div> --}}
 
-    <div class="center amount">
+    {{-- <div class="center amount">
         Rp{{ number_format($jumlahSetoran, 0, ',', '.') }}
     </div>
 
     <table class="data-table">
         <tr><td class="label">Nama</td><td class="value">{{ $nasabah->nama }}</td></tr>
         <tr><td class="label">Umplung</td><td class="value">{{ $nasabah->nama_umplung }}</td></tr>
-        <tr><td class="label">No. Rekening</td><td class="value">{{ $nasabah->nomor_rekening }}</td></tr>
+        <tr><td class="label">No. Rekening</td><td class="value">{{ formatRekening($nasabah->nomor_rekening) }}</td></tr>
         <tr><td class="label">Blok</td><td class="value">{{ $nasabah->blokPasar->nama_blok ?? '-' }}</td></tr>
         <tr><td class="label">Tanggal</td><td class="value">{{ $tanggalSetoran }}</td></tr>
         <tr><td class="label">Petugas</td><td class="value">{{ $petugas->name }}</td></tr>
     </table>
 
     <div class="line"></div>
-    <div class="footer">Cabang Pembantu Jatinom<br>Klaten</div>
-</div>
+    <div class="footer">Cabang Pembantu Jatinom<br>Klaten</div> --}}
+{{-- </div> --}}
 
 <script>
     window.onload = function() { window.print(); };

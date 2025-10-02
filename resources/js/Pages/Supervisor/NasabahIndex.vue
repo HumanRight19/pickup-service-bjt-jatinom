@@ -1,4 +1,6 @@
 <template>
+    <Head title="Nasabah" />
+
     <SupervisorLayout :user="user" activePage="nasabah">
         <div class="min-h-screen py-8 px-4 md:px-8">
             <div
@@ -213,6 +215,7 @@
 </template>
 
 <script setup>
+import { Head } from "@inertiajs/vue3";
 import { ref, reactive } from "vue";
 import { router } from "@inertiajs/vue3";
 import _ from "lodash";
@@ -264,14 +267,23 @@ function importNasabah(event) {
     }, 300);
 
     router.post("/supervisor/nasabah/import", formData, {
-        onSuccess: () => {
-            event.target.value = "";
-            refreshData();
-            showToast("Import nasabah berhasil!", "success");
+        onSuccess: (page) => {
+            // ambil flash sukses dari props inertia
+            if (page.props.flash.success) {
+                showToast(page.props.flash.success, "success");
+                refreshData();
+            }
         },
-        onError: (err) => {
-            console.error(err);
-            alert("Import gagal!");
+        onError: (errors) => {
+            // ambil error dari inertia
+            if (errors.file) {
+                showToast("Import gagal: " + errors.file, "error");
+            } else {
+                showToast(
+                    "Import gagal! Ada kesalahan tidak diketahui.",
+                    "error"
+                );
+            }
         },
         onFinish: () => {
             clearInterval(interval);

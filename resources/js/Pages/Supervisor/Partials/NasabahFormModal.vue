@@ -3,67 +3,76 @@
     <Transition name="fade">
         <div
             v-if="show"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+            @click.self="$emit('update:show', false)"
         >
             <div
-                class="bg-white dark:bg-gray-900 p-6 rounded w-full max-w-md shadow"
+                class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md p-8 rounded-2xl w-full max-w-md shadow-2xl border border-gray-200/30 dark:border-gray-700/30 animate-fadeIn"
             >
+                <!-- Judul -->
                 <h2
-                    class="text-xl font-bold mb-4 text-gray-800 dark:text-white"
+                    class="text-2xl font-semibold mb-6 text-gray-800 dark:text-gray-100 tracking-wide"
                 >
                     {{ editing ? "Edit" : "Tambah" }} Nasabah
                 </h2>
-                <form @submit.prevent="submit">
+
+                <form @submit.prevent="submit" class="space-y-5">
                     <!-- Nama -->
-                    <div class="mb-4">
-                        <label class="block text-gray-700 dark:text-gray-300"
-                            >Nama</label
+                    <div>
+                        <label
+                            class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300"
                         >
+                            Nama
+                        </label>
                         <input
                             v-model="form.nama"
                             type="text"
-                            class="w-full border dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-white p-2 rounded"
                             required
+                            class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/70 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                         />
-                        <p v-if="errors.nama" class="text-red-500 text-sm mt-1">
+                        <p v-if="errors.nama" class="text-sm text-red-500 mt-1">
                             {{ errors.nama[0] }}
                         </p>
                     </div>
 
                     <!-- Nama Umplung -->
-                    <div class="mb-4">
-                        <label class="block text-gray-700 dark:text-gray-300"
-                            >Nama Umplung</label
+                    <div>
+                        <label
+                            class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300"
                         >
+                            Nama Umplung
+                        </label>
                         <input
                             v-model="form.nama_umplung"
                             type="text"
-                            class="w-full border dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-white p-2 rounded"
                             required
+                            class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/70 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                         />
                         <p
                             v-if="errors.nama_umplung"
-                            class="text-red-500 text-sm mt-1"
+                            class="text-sm text-red-500 mt-1"
                         >
                             {{ errors.nama_umplung[0] }}
                         </p>
                     </div>
 
                     <!-- Nomor Rekening -->
-                    <div class="mb-4">
-                        <label class="block text-gray-700 dark:text-gray-300"
-                            >Nomor Rekening</label
+                    <div>
+                        <label
+                            class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300"
                         >
+                            Nomor Rekening
+                        </label>
                         <input
                             v-model="form.nomor_rekening"
                             @input="validateNumber('nomor_rekening')"
                             type="text"
-                            class="w-full border dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-white p-2 rounded"
                             required
+                            class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/70 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                         />
                         <p
                             v-if="errors.nomor_rekening"
-                            class="text-red-500 text-sm mt-1"
+                            class="text-sm text-red-500 mt-1"
                         >
                             {{
                                 Array.isArray(errors.nomor_rekening)
@@ -74,53 +83,59 @@
                     </div>
 
                     <!-- Alamat -->
-                    <div class="mb-4">
-                        <label class="block text-gray-700 dark:text-gray-300"
-                            >Alamat</label
+                    <div>
+                        <label
+                            class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300"
                         >
+                            Alamat
+                        </label>
                         <input
                             v-model="form.alamat"
                             type="text"
-                            class="w-full border dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-white p-2 rounded"
                             required
+                            class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/70 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                         />
                         <p
                             v-if="errors.alamat"
-                            class="text-red-500 text-sm mt-1"
+                            class="text-sm text-red-500 mt-1"
                         >
                             {{ errors.alamat[0] }}
                         </p>
                     </div>
 
                     <!-- Nomor HP -->
-                    <div class="mb-4">
-                        <label class="block text-gray-700 dark:text-gray-300"
-                            >Nomor HP</label
+                    <div>
+                        <label
+                            class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300"
                         >
+                            Nomor HP
+                        </label>
                         <input
                             v-model="form.nomor_hp"
                             @input="validateNumber('nomor_hp')"
                             type="text"
-                            class="w-full border dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-white p-2 rounded"
                             required
+                            class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/70 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                         />
                         <p
                             v-if="errors.nomor_hp"
-                            class="text-red-500 text-sm mt-1"
+                            class="text-sm text-red-500 mt-1"
                         >
                             {{ errors.nomor_hp[0] }}
                         </p>
                     </div>
 
                     <!-- Blok Pasar -->
-                    <div class="mb-4">
-                        <label class="block text-gray-700 dark:text-gray-300"
-                            >Blok Pasar</label
+                    <div>
+                        <label
+                            class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300"
                         >
+                            Blok Pasar
+                        </label>
                         <select
                             v-model="form.blok_pasar_id"
-                            class="w-full border dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-white p-2 rounded"
                             required
+                            class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/70 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                         >
                             <option value="">Pilih Blok</option>
                             <option
@@ -133,25 +148,25 @@
                         </select>
                         <p
                             v-if="errors.blok_pasar_id"
-                            class="text-red-500 text-sm mt-1"
+                            class="text-sm text-red-500 mt-1"
                         >
                             {{ errors.blok_pasar_id[0] }}
                         </p>
                     </div>
 
                     <!-- Tombol -->
-                    <div class="flex justify-end space-x-2 mt-6">
+                    <div class="flex justify-end gap-3 pt-4">
                         <button
                             type="button"
                             @click="$emit('update:show', false)"
-                            class="px-4 py-2 bg-gray-300 dark:bg-gray-700 dark:text-white rounded"
+                            class="px-5 py-2.5 rounded-xl bg-gray-200/70 dark:bg-gray-700/70 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-200"
                         >
                             Batal
                         </button>
                         <button
                             type="submit"
-                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded disabled:opacity-50 cursor-not-allowed"
                             :disabled="isSubmitDisabled"
+                            class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600 transition-all duration-200 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Simpan
                         </button>
@@ -397,5 +412,18 @@ const isSubmitDisabled = computed(() => {
 }
 .animate-bounce-slow {
     animation: bounce-slow 2s infinite;
+}
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+.animate-fadeIn {
+    animation: fadeIn 0.25s ease-out;
 }
 </style>

@@ -309,7 +309,6 @@ class PetugasSetoranController extends Controller
         return response()->json($nasabah);
     }
 
-
     // Batal setoran
     public function destroy(Request $request, $id)
     {

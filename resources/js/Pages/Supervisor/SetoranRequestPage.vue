@@ -1,4 +1,6 @@
 <template>
+    <Head title="Pengajuan" />
+
     <SupervisorLayout :user="page.props.auth.user" activePage="setoranRequest">
         <div
             class="min-h-screen bg-gray-50 dark:bg-gray-950 p-6 flex flex-col gap-8"
@@ -478,6 +480,7 @@
 </template>
 
 <script setup>
+import { Head } from "@inertiajs/vue3";
 import { ref, watch, computed } from "vue";
 import { usePage, useForm, router } from "@inertiajs/vue3";
 import debounce from "lodash/debounce";

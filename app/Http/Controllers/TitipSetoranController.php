@@ -14,7 +14,7 @@ use Inertia\Inertia;
 class TitipSetoranController extends Controller
 {
     /**
-     * Pastikan petugas sedang dijadwalkan hari ini
+     * Baru - Pastikan petugas sedang dijadwalkan hari ini
      */
     private function ensureAssigned()
     {
@@ -33,26 +33,53 @@ class TitipSetoranController extends Controller
     /**
      * Index - tampilkan grid nasabah untuk titip setoran
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
         $penjadwalan = $this->ensureAssigned();
 
-        // Ambil semua nasabah yang ada di blok yang dijadwalkan supervisor
+        // Ambil semua nasabah yang TIDAK termasuk blok terjadwal
         $nasabahsBlokTerjadwal = Nasabah::where('blok_pasar_id', $penjadwalan->blok_id)->pluck('id');
 
-        // Ambil semua nasabah yang TIDAK termasuk blok terjadwal
-        $nasabahs = Nasabah::whereNotIn('id', $nasabahsBlokTerjadwal)
+        /**
+         * Gunakan session agar URL tetap bersih.
+         * Jika ada input baru, perbarui session-nya.
+         */
+        if ($request->isMethod('post')) {
+            if ($request->has('search')) {
+                session(['titip_search' => $request->input('search')]);
+                session(['titip_page' => 1]); // reset ke halaman pertama saat ganti search
+            }
+            if ($request->has('page')) {
+                session(['titip_page' => $request->input('page')]);
+            }
+        }
+
+        $search = session('titip_search', null);
+        $page = session('titip_page', 1);
+
+        // Query nasabah
+        $query = Nasabah::whereNotIn('id', $nasabahsBlokTerjadwal)
             ->with([
                 'titipSetorans' => fn($q) => $q
-                    ->whereDate('tanggal_titip', now()->toDateString())
+                    ->whereDate('tanggal_titip', today())
                     ->where('petugas_id', $user->id)
                     ->orderByDesc('id'),
                 'titipSetorans.requests' => fn($q) => $q->latest(),
                 'blokPasar'
-            ])
-            ->get();
+            ]);
 
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                    ->orWhere('nama_umplung', 'like', "%{$search}%");
+            });
+        }
+
+        $nasabahs = $query->paginate(10, ['*'], 'page', $page);
+        $nasabahs->withPath(route('petugas.titipsetoran.index')); // agar URL tetap bersih
+
+        // Mapping titip setoran + status
         $titipSetorans = $nasabahs->mapWithKeys(function ($nasabah) use ($user) {
             $titip = $nasabah->titipSetorans->first();
             $latestRequest = $titip?->requests->first();
@@ -74,7 +101,7 @@ class TitipSetoranController extends Controller
             }
 
             return [
-                (int) $nasabah->id => [
+                $nasabah->id => [
                     'titip_setoran_id' => $titip->id ?? null,
                     'nasabah_id' => $nasabah->id,
                     'jumlah' => $titip->jumlah ?? 0,
@@ -86,10 +113,18 @@ class TitipSetoranController extends Controller
             ];
         });
 
+        // Total titip setoran hari ini
+        $totalTitipSetoranHariIni = TitipSetoran::where('petugas_id', $user->id)
+            ->whereDate('tanggal_titip', today())
+            ->whereIn('status', ['sudah_setor', 'pengajuan_batal_ditolak'])
+            ->sum('jumlah');
+
         return Inertia::render('Petugas/TitipSetoran', [
             'nasabahs' => $nasabahs,
-            'titipSetorans' => $titipSetorans,
+            'titipSetorans' => $titipSetorans->toArray(),
             'petugas' => $user,
+            'totalTitipSetoranHariIni' => (int) $totalTitipSetoranHariIni,
+            'search' => $search,
         ]);
     }
 

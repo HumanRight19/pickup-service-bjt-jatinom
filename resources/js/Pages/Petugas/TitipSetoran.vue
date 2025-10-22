@@ -11,23 +11,68 @@
                 <!-- Header -->
                 <header class="mb-6">
                     <h1
-                        class="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight"
+                        class="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight"
                     >
                         Titip Setoran Harian
                     </h1>
-                    <p class="text-gray-600 dark:text-gray-400 mt-2">
-                        Selamat datang kembali,
-                        <span class="font-semibold text-green-600">{{
-                            petugas.name
-                        }}</span>
-                        👋 • {{ tanggalHariIni }}
+                    <p
+                        class="text-gray-600 dark:text-gray-400 mt-1 flex flex-wrap items-center gap-2"
+                    >
+                        Selamat datang,
+                        <span
+                            class="font-semibold text-green-500 dark:text-green-400"
+                            >{{ petugas.name }}</span
+                        >
+                        👋
+                        <span
+                            class="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded-full text-sm font-medium"
+                            >{{ tanggalHariIni }}</span
+                        >
                     </p>
                 </header>
+
+                <!-- Total Setoran Card Modern -->
+                <div
+                    class="mb-6 w-full max-w-md mx-auto bg-gradient-to-r from-green-400 to-green-600 dark:from-green-800 dark:to-green-900/40 rounded-3xl p-6 flex flex-col items-center justify-center shadow-xl backdrop-blur-sm hover:scale-105 transition-transform duration-300"
+                >
+                    <div class="flex items-center gap-3">
+                        <!-- Icon setoran -->
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-10 w-10 text-white dark:text-green-200"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M12 8c-3 0-5 1.5-5 4s2 4 5 4 5-1.5 5-4-2-4-5-4z"
+                            />
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M12 8v8m0 0l-3-3m3 3l3-3"
+                            />
+                        </svg>
+                        <h2
+                            class="text-xl sm:text-2xl font-bold text-white dark:text-green-100"
+                        >
+                            Total Setoran Hari Ini
+                        </h2>
+                    </div>
+                    <p
+                        class="mt-4 text-4xl sm:text-5xl font-extrabold text-white dark:text-green-50 tracking-tight animate-pulse"
+                    >
+                        Rp{{ formatRupiah(totalTitipSetoran) }}
+                    </p>
+                </div>
 
                 <!-- Search + QR -->
                 <div class="mb-6 w-full sm:max-w-md relative">
                     <input
-                        v-model="search"
+                        v-model="form.search"
                         type="text"
                         placeholder="Cari nama nasabah..."
                         class="w-full px-4 py-2 pr-10 border rounded-lg text-sm dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-green-500 focus:outline-none transition"
@@ -54,8 +99,11 @@
                     </button>
                 </div>
 
-                <!-- Tombol "Tampilkan Semua" -->
-                <div v-if="highlightedNasabahId" class="mb-4 text-right">
+                <!-- Tombol Tampilkan Semua -->
+                <div
+                    v-if="focusedNasabahId === 'search_done'"
+                    class="text-right mb-4"
+                >
                     <button
                         @click="showAllNasabahs"
                         class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
@@ -75,8 +123,8 @@
                         :ref="(el) => (nasabahRefs[nasabah.id] = el)"
                         :class="[
                             'bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-md flex flex-col justify-between hover:shadow-lg transition',
-                            String(highlightedNasabahId) === String(nasabah.id)
-                                ? 'ring-4 ring-green-500'
+                            highlightedNasabahId === String(nasabah.id)
+                                ? 'ring-4 ring-green-500 animate-pulse'
                                 : '',
                         ]"
                     >
@@ -188,6 +236,36 @@
                 </div>
 
                 <slot name="modals" />
+
+                <!-- Pagination -->
+                <div
+                    v-if="props.nasabahs?.last_page > 1"
+                    class="mt-6 flex justify-center dark:text-white"
+                >
+                    <nav>
+                        <ul class="flex gap-1">
+                            <li
+                                v-for="link in props.nasabahs?.links || []"
+                                :key="link.label"
+                            >
+                                <button
+                                    :disabled="!link.url"
+                                    @click="goToPage(link)"
+                                    v-html="link.label"
+                                    class="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 text-sm transition"
+                                    :class="{
+                                        'bg-blue-600 text-white border-blue-600':
+                                            link.active,
+                                        'hover:bg-gray-200 dark:hover:bg-gray-700':
+                                            link.url,
+                                        'opacity-50 cursor-not-allowed':
+                                            !link.url,
+                                    }"
+                                ></button>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
             </div>
         </div>
 
@@ -248,9 +326,10 @@
 import { Head } from "@inertiajs/vue3";
 import PetugasLayout from "@/Layouts/PetugasLayout.vue";
 import { Plus, Info, Printer, X } from "lucide-vue-next";
-import { ref, reactive, computed, nextTick, onMounted } from "vue";
-import { router } from "@inertiajs/vue3";
+import { ref, reactive, computed, nextTick, onMounted, watch } from "vue";
+import { router, useForm } from "@inertiajs/vue3";
 import { route } from "ziggy-js";
+import debounce from "lodash/debounce";
 
 import ScanModal from "@/Components/Modals/ScanModal.vue";
 import InfoModal from "@/Components/Modals/InfoModal.vue";
@@ -261,15 +340,26 @@ import LoadingModal from "@/Components/Modals/LoadingModal.vue";
 
 const props = defineProps({
     user: Object,
-    nasabahs: Array,
+    nasabahs: Object,
     titipSetorans: Object, // ganti
     blok: Object,
     petugas: Object,
+    totalTitipSetoranHariIni: Number, // <--- tambahkan ini
+    search: String,
 });
 
-const nasabahsLocal = ref([...props.nasabahs]);
+// --- Local copy untuk search cepat ---
+const nasabahsLocal = ref([...props.nasabahs.data]);
+
+// --- Sync titip setorans ---
 const titipSetoransLocal = reactive({}); // ganti
+
+Object.values(props.titipSetorans || {}).forEach((s) => {
+    titipSetoransLocal[s.nasabah_id] = { ...s };
+});
+
 const search = ref("");
+
 const highlightedNasabahId = ref(null);
 const nasabahRefs = reactive({});
 const formValue = ref(0);
@@ -290,9 +380,16 @@ const cancelNasabahId = ref(null);
 const cancelReason = ref("");
 const showRequestSentModal = ref(false);
 
+const form = useForm({
+    search: props.search || "",
+    page: props.nasabahs.current_page || 1,
+});
+
+console.log(props.nasabahs);
+
 // Sync titip setoran
-function syncTitipSetoransLocal(newSetorans) {
-    Object.values(newSetorans).forEach((titip) => {
+function syncTitipSetoransLocal(newTitipSetorans) {
+    Object.values(newTitipSetorans).forEach((titip) => {
         if (titip.nasabah_id) {
             titipSetoransLocal[String(titip.nasabah_id)] = {
                 ...titip,
@@ -304,7 +401,14 @@ function syncTitipSetoransLocal(newSetorans) {
     });
 }
 
+// total titip setoran
+const totalTitipSetoran = ref(props.totalTitipSetoranHariIni || 0);
+
 onMounted(() => {
+    nasabahsLocal.value.forEach((n) => {
+        if (n.id == null) console.warn("Nasabah tanpa id:", n);
+    });
+
     if (props.titipSetorans) {
         syncTitipSetoransLocal(props.titipSetorans);
     }
@@ -314,35 +418,101 @@ function formatRupiah(value) {
     return !value && value !== 0 ? "0" : Number(value).toLocaleString("id-ID");
 }
 
-const filteredNasabahs = computed(() => {
-    if (!search.value) return nasabahsLocal.value;
-    const keyword = search.value.toLowerCase();
-    return nasabahsLocal.value.filter(
-        (n) =>
-            n.nama.toLowerCase().includes(keyword) ||
-            (n.nama_umplung && n.nama_umplung.toLowerCase().includes(keyword))
-    );
-});
+const focusedNasabahId = ref(null);
 
-const displayedNasabahs = computed(() =>
-    highlightedNasabahId.value
-        ? [
-              nasabahsLocal.value.find(
-                  (n) => String(n.id) === String(highlightedNasabahId.value)
-              ),
-          ]
-        : filteredNasabahs.value
+watch(
+    () => form.search,
+    debounce((val) => {
+        router.post(
+            route("petugas.titipsetoran.index"),
+            { search: val, page: 1 },
+            {
+                preserveState: true, // ✅ tetap di halaman tanpa reload full
+                replace: true,
+                onSuccess: () => {
+                    window.history.replaceState(
+                        {},
+                        "",
+                        route("petugas.titipsetoran.index")
+                    );
+                },
+            }
+        );
+    }, 400)
 );
+
+// --- Tampilkan Semua muncul hanya setelah hasil ditemukan ---
+watch(
+    () => props.nasabahs.data,
+    (newData) => {
+        if (form.search && newData.length > 0) {
+            // Hasil ditemukan, munculkan tombol tampilkan semua
+            focusedNasabahId.value = "search_done";
+        } else {
+            focusedNasabahId.value = null;
+        }
+    },
+    { immediate: true }
+);
+
+// untuk memberi efek highlight otomatis
+watch(
+    () => props.nasabahs.data,
+    (newData) => {
+        if (form.search && newData.length > 0) {
+            // Cari nasabah pertama yang cocok
+            const found = newData.find((n) =>
+                n.nama.toLowerCase().includes(form.search.toLowerCase())
+            );
+
+            if (found) {
+                // Set ID string untuk highlight
+                highlightedNasabahId.value = String(found.id);
+
+                // Tunggu nextTick supaya DOM sudah ter-render
+                nextTick(() => {
+                    const el = nasabahRefs[found.id];
+                    if (el?.scrollIntoView) {
+                        el.scrollIntoView({
+                            behavior: "smooth",
+                            block: "center",
+                        });
+                    }
+
+                    // Hilangkan highlight otomatis setelah 2 detik
+                    setTimeout(() => {
+                        if (highlightedNasabahId.value === String(found.id)) {
+                            highlightedNasabahId.value = null;
+                        }
+                    }, 2000);
+                });
+
+                // Fokus tombol tampilkan semua
+                focusedNasabahId.value = "search_done";
+            } else {
+                highlightedNasabahId.value = null;
+                focusedNasabahId.value = null;
+            }
+        } else {
+            highlightedNasabahId.value = null;
+            focusedNasabahId.value = null;
+        }
+    },
+    { immediate: true }
+);
+
+// Replace displayedNasabahs computed
+const displayedNasabahs = computed(() => props.nasabahs.data || []);
 
 // Fungsi openInputModal
 function openInputModal(nasabahId) {
     nasabahIdActive.value = nasabahId;
-    const titip = titipSetoransLocal[nasabahId];
+    const nasabahTitip = titipSetoransLocal[nasabahId];
 
-    if (!titip || titip.status === "pengajuan_batal_diterima") {
+    if (!nasabahTitip || nasabahTitip.status === "pengajuan_batal_diterima") {
         formValue.value = 0;
     } else {
-        formValue.value = titip.jumlah || 0;
+        formValue.value = nasabahTitip.jumlah || 0;
     }
 
     showInputModal.value = true;
@@ -352,60 +522,6 @@ function closeInputModal() {
     showInputModal.value = false;
     nasabahIdActive.value = null;
     formValue.value = 0;
-}
-
-function submitSetoran() {
-    if (!nasabahIdActive.value || formValue.value < 100) return;
-    const nasabahId = nasabahIdActive.value;
-
-    showLoadingModal.value = true;
-    loadingProgress.value = 0;
-    let interval = setInterval(() => {
-        if (loadingProgress.value < 80) loadingProgress.value += 10;
-    }, 200);
-
-    axios
-        .post("/petugas/setoran", {
-            nasabah_id: nasabahId,
-            jumlah: formValue.value,
-        })
-        .then((res) => {
-            const newSetoran = res.data.setoran;
-            if (!newSetoran)
-                throw new Error("Setoran baru tidak diterima dari server");
-
-            // update lokal
-            titipSetoransLocal[String(nasabahId)] = {
-                ...newSetoran,
-                status: newSetoran.status ?? "sudah_setor",
-                tanggal: newSetoran.tanggal
-                    ? new Date(newSetoran.tanggal)
-                    : null,
-            };
-
-            highlightedNasabahId.value = nasabahId;
-            nextTick(() => {
-                nasabahRefs[nasabahId]?.scrollIntoView({
-                    behavior: "smooth",
-                    block: "center",
-                });
-            });
-            setTimeout(() => (highlightedNasabahId.value = null), 2000);
-
-            closeInputModal();
-            clearInterval(interval);
-            loadingProgress.value = 100;
-            setTimeout(() => (showLoadingModal.value = false), 500);
-        })
-        .catch((err) => {
-            clearInterval(interval);
-            showLoadingModal.value = false;
-            showInfoModal(
-                err.response?.data?.message ||
-                    err.message ||
-                    "Gagal input setoran"
-            );
-        });
 }
 
 // Info modal untuk semua alert
@@ -426,7 +542,7 @@ function openCancelModal(nasabahId) {
     const titip = titipSetoransLocal[String(nasabahId)];
     if (!titip || !titip.titip_setoran_id) {
         showInfoModal(
-            "Setoran untuk nasabah ini belum ada, batal tidak bisa dilakukan."
+            "Titip setoran untuk nasabah ini belum ada, batal tidak bisa dilakukan."
         );
         return;
     }
@@ -457,6 +573,7 @@ function confirmCancel(reasonFromModal) {
     const alasan = reasonFromModal?.trim();
     if (!alasan) return showInfoModal("Masukkan alasan batal dulu!");
 
+    // Tampilkan loading
     showLoadingModal.value = true;
     loadingProgress.value = 0;
     let interval = setInterval(() => {
@@ -471,12 +588,17 @@ function confirmCancel(reasonFromModal) {
             { data: { alasan } }
         )
         .then((res) => {
+            // Update status lokal
             titipSetoransLocal[nasabahId] = {
                 ...titip,
                 status: "pengajuan_batal",
             };
+
+            // Tutup modal cancel & tampilkan modal sukses
             closeCancelModal();
             showRequestSentModal.value = true;
+
+            // Optional: tampilkan toast sukses
             notif.value = {
                 show: true,
                 message:
@@ -506,9 +628,9 @@ function closeRequestSentModal() {
 
 // --- Status tombol ---
 function isInputEnabled(id) {
-    const setor = titipSetoransLocal[id];
-    if (!setor) return true; // Nasabah baru bisa input
-    const status = setor.status;
+    const titip = titipSetoransLocal[id];
+    if (!titip) return true; // Nasabah baru bisa input
+    const status = titip.status;
     return status === "belum_setor" || status === "pengajuan_batal_diterima";
 }
 
@@ -553,17 +675,33 @@ function goToDetail(nasabahId) {
 // Tombol Cetak
 async function handlePrintClick(nasabahId) {
     const titip = titipSetoransLocal[nasabahId];
-    if (!titip || !titip.titip_setoran_id)
+    if (!titip || !titip.titip_setoran_id) {
         return showInfoModal("Titip setoran belum ada.");
+    }
+
+    // --- MULAI LOADING ---
+    showLoadingModal.value = true;
+    loadingProgress.value = 0;
+    let interval = setInterval(() => {
+        if (loadingProgress.value < 80) loadingProgress.value += 10;
+    }, 200);
 
     try {
+        // 1. Panggil prepareCetak dengan axios, bukan router.post
         await axios.post(route("petugas.titipsetoran.prepareCetak"), {
             nasabah_id: nasabahId,
         });
-        window.open(route("petugas.titipsetoran.previewThermal"), "_blank");
+
+        // 2. Kalau sukses, buka preview tanpa query string
+        const url = route("petugas.titipsetoran.previewThermal");
+        window.open(url, "_blank");
     } catch (err) {
         console.error("Error prepareCetak:", err);
         showInfoModal("Gagal menyiapkan cetak.");
+    } finally {
+        clearInterval(interval);
+        loadingProgress.value = 100;
+        setTimeout(() => (showLoadingModal.value = false), 300);
     }
 }
 
@@ -577,32 +715,58 @@ function stopScan() {
 }
 
 function handleNasabahFound(nasabah) {
-    scanning.value = false;
+    if (!nasabah) return;
 
-    // Cari nasabah di grid lokal (nasabahsLocal)
-    const found = nasabahsLocal.value.find((n) => {
-        return (
-            String(n.id) === String(nasabah.id) ||
-            (n.uuid && nasabah.uuid && String(n.uuid) === String(nasabah.uuid))
-        );
-    });
+    stopScan(); // Tutup modal scan
 
-    if (found) {
-        highlightedNasabahId.value = String(found.id);
+    // Gunakan search di server, sama seperti searchbar
+    form.search = nasabah.nama; // bisa juga pakai nasabah.id
+    router.post(
+        route("petugas.titipsetoran.index"),
+        { search: form.search, page: 1 }, // cari di server dari page manapun
+        {
+            preserveState: true,
+            replace: true,
+            onSuccess: (pageProps) => {
+                // Sinkronisasi titipSetorans lokal
+                if (pageProps.titipSetorans) {
+                    syncTitipSetoransLocal(pageProps.titipSetorans);
+                }
 
-        nextTick(() => {
-            nasabahRefs[found.id]?.scrollIntoView({
-                behavior: "smooth",
-                block: "center",
-            });
-        });
-    } else {
-        console.warn(
-            "Scan berhasil, tapi nasabah tidak cocok dengan grid:",
-            nasabah
-        );
-        showInfoModal("Nasabah tidak ditemukan di grid titip setoran!");
-    }
+                // Cari nasabah hasil scan dari data server
+                const found = pageProps.nasabahs.data.find(
+                    (n) => String(n.id) === String(nasabah.id)
+                );
+
+                if (found) {
+                    // Highlight dan fokus
+                    highlightedNasabahId.value = String(found.id);
+                    focusedNasabahId.value = "search_done";
+
+                    nextTick(() => {
+                        const el = nasabahRefs[found.id];
+                        if (el?.scrollIntoView) {
+                            el.scrollIntoView({
+                                behavior: "smooth",
+                                block: "center",
+                            });
+                        }
+
+                        // Hilangkan highlight otomatis setelah 2 detik
+                        setTimeout(() => {
+                            if (
+                                highlightedNasabahId.value === String(found.id)
+                            ) {
+                                highlightedNasabahId.value = null;
+                            }
+                        }, 2000);
+                    });
+                } else {
+                    handleNasabahNotFound(); // Nasabah tidak ditemukan
+                }
+            },
+        }
+    );
 }
 
 function handleNasabahNotFound() {
@@ -620,6 +784,7 @@ function submitTitipSetoranWrapper(value, callback) {
     if (!nasabahIdActive.value) return callback(false);
     const nasabahId = nasabahIdActive.value;
 
+    // --- MULAI LOADING ---
     showLoadingModal.value = true;
     loadingProgress.value = 0;
     let interval = setInterval(() => {
@@ -634,16 +799,22 @@ function submitTitipSetoranWrapper(value, callback) {
         .then((res) => {
             const newTitip = res.data.titip_setoran;
             if (!newTitip)
-                throw new Error(
-                    "Titip setoran baru tidak diterima dari server"
-                );
+                throw new Error("Setoran baru tidak diterima dari server");
 
             titipSetoransLocal[nasabahId] = {
                 ...newTitip,
-                titip_setoran_id: newTitip.id,
+                setoran_id: newTitip.id,
                 status: newTitip.status ?? "sudah_setor",
                 tanggal: newTitip.tanggal ? new Date(newTitip.tanggal) : null,
             };
+
+            // 🟩 Tambahkan ini — update total langsung tanpa reload
+            if (res.data.totalTitipSetoran !== undefined) {
+                totalTitipSetoran.value = res.data.totalTitipSetoran;
+            } else {
+                // fallback kalau backend belum kirim total baru
+                totalTitipSetoran.value += Number(newTitip.jumlah || 0);
+            }
 
             highlightedNasabahId.value = nasabahId;
             nextTick(() => {
@@ -652,7 +823,7 @@ function submitTitipSetoranWrapper(value, callback) {
                     block: "center",
                 });
             });
-            // setTimeout(() => (highlightedNasabahId.value = null), 2000);
+            setTimeout(() => (highlightedNasabahId.value = null), 2000);
 
             closeInputModal();
             callback(true);
@@ -661,7 +832,7 @@ function submitTitipSetoranWrapper(value, callback) {
             showInfoModal(
                 err.response?.data?.message ||
                     err.message ||
-                    "Gagal input titip setoran"
+                    "Gagal input setoran"
             );
             callback(false);
         })
@@ -670,6 +841,37 @@ function submitTitipSetoranWrapper(value, callback) {
             loadingProgress.value = 100;
             setTimeout(() => (showLoadingModal.value = false), 300);
         });
+}
+
+// --- Pagination ---
+const totalPages = computed(() => props.nasabahs.last_page || 1);
+
+function goToPage(link) {
+    if (!link?.url) return;
+
+    try {
+        const url = new URL(link.url, window.location.origin);
+        const page = url.searchParams.get("page") || 1;
+
+        router.post(
+            route("petugas.titipsetoran.index"),
+            { page }, // update session dashboard_page
+            {
+                preserveState: true, // ✅ biar sidebar gak buka ulang
+                replace: true,
+                onSuccess: () => {
+                    // setelah sukses, hapus query param agar URL tetap bersih
+                    window.history.replaceState(
+                        {},
+                        "",
+                        route("petugas.titipsetoran.index")
+                    );
+                },
+            }
+        );
+    } catch (err) {
+        console.warn("Gagal parsing URL pagination:", err);
+    }
 }
 </script>
 
@@ -681,5 +883,19 @@ function submitTitipSetoranWrapper(value, callback) {
 .fade-enter-from,
 .fade-leave-to {
     opacity: 0;
+}
+@keyframes pulse {
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.9;
+        transform: scale(1.02);
+    }
+}
+.animate-pulse {
+    animation: pulse 1.2s ease-in-out;
 }
 </style>

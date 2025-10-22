@@ -7,11 +7,122 @@ use App\Models\Setoran;
 use App\Models\PenjadwalanHarian;
 use Illuminate\Http\Request;
 use App\Models\SetoranRequest;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use App\Models\BlokPasar;
 use Inertia\Inertia;
 
 class PetugasSetoranController extends Controller
 {
+    public function index(Request $request)
+    {
+        $user = Auth::user();
+        $blok = $user->blokHariIni?->blok;
+
+        if (!$blok) {
+            return Inertia::render('Petugas/Dashboard', [
+                'nasabahs' => [
+                    'data' => [],
+                    'current_page' => 1,
+                    'last_page' => 1,
+                    'total' => 0,
+                    'links' => [],
+                ],
+                'setorans' => [],
+                'blok' => ['nama_blok' => 'Belum ada penugasan'],
+                'petugas' => $user,
+                'totalSetoranHariIni' => 0,
+                'search' => null,
+            ]);
+        }
+
+        /**
+         * Gunakan session agar URL tetap bersih.
+         * Jika ada input baru, perbarui session-nya.
+         */
+        if ($request->isMethod('post')) {
+            if ($request->has('search')) {
+                session(['dashboard_search' => $request->input('search')]);
+                session(['dashboard_page' => 1]); // reset ke halaman pertama saat ganti search
+            }
+            if ($request->has('page')) {
+                session(['dashboard_page' => $request->input('page')]);
+            }
+        }
+
+        // Ambil nilai search dan page dari session
+        $search = session('dashboard_search', null);
+        $page = session('dashboard_page', 1);
+
+        // Query nasabah berdasarkan blok
+        $query = Nasabah::where('blok_pasar_id', $blok->id)
+            ->with([
+                'setorans' => fn($q) => $q
+                    ->whereDate('tanggal', today())
+                    ->where('user_id', $user->id)
+                    ->orderByDesc('id'),
+                'setorans.requests' => fn($q) => $q->latest(),
+            ]);
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                    ->orWhere('nama_umplung', 'like', "%{$search}%");
+            });
+        }
+
+        $nasabahs = $query->paginate(10, ['*'], 'page', $page);
+        $nasabahs->withPath(route('petugas.dashboard')); // jaga URL tetap bersih
+
+        // Mapping setoran + status
+        $setorans = $nasabahs->mapWithKeys(function ($nasabah) use ($user) {
+            $setoran = $nasabah->setorans->first();
+            $latestRequest = $setoran?->requests->first();
+
+            if (!$setoran)
+                $status = 'belum_setor';
+            elseif ($latestRequest?->status === 'pending' && $latestRequest->type === 'batal')
+                $status = 'pengajuan_batal';
+            elseif ($latestRequest?->status === 'rejected' && $latestRequest->type === 'batal')
+                $status = 'pengajuan_batal_ditolak';
+            elseif ($latestRequest?->status === 'approved' && $latestRequest->type === 'batal')
+                $status = 'pengajuan_batal_diterima';
+            else
+                $status = 'sudah_setor';
+
+            return [
+                $nasabah->id => [
+                    'setoran_id' => $setoran->id ?? null,
+                    'nasabah_id' => $nasabah->id,
+                    'jumlah' => $setoran->jumlah ?? 0,
+                    'tanggal' => $setoran ? Carbon::parse($setoran->tanggal)->toDateString() : null,
+                    'status' => $status,
+                    'user_id' => $user->id,
+                ]
+            ];
+        });
+
+        // Total setoran hari ini
+        $totalSetoranHariIni = \App\Models\Setoran::where('user_id', $user->id)
+            ->whereDate('tanggal', today())
+            ->whereIn('status', ['sudah_setor', 'pengajuan_batal_ditolak'])
+            ->sum('jumlah');
+
+        // dd($nasabahs->first()->setorans);
+
+        return Inertia::render('Petugas/Dashboard', [
+            'nasabahs' => $nasabahs,
+            'setorans' => $setorans->toArray(),
+            'blok' => [
+                'id' => $blok->id,
+                'nama_blok' => $blok->nama_blok,
+            ],
+            'petugas' => $user,
+            'totalSetoranHariIni' => (int) $totalSetoranHariIni,
+            'search' => $search,
+        ]);
+    }
+
     // Simpan setoran utama
     public function store(Request $request)
     {
@@ -81,6 +192,11 @@ class PetugasSetoranController extends Controller
             'tanggal' => $tanggal,
         ]);
 
+        // Hitung total setoran setelah input baru
+        $totalSetoran = Setoran::where('user_id', $user->id)
+            ->whereDate('tanggal', now()->toDateString())
+            ->sum('jumlah');
+
         return response()->json([
             'setoran' => [
                 'id' => $setoran->id,
@@ -89,6 +205,7 @@ class PetugasSetoranController extends Controller
                 'tanggal' => \Carbon\Carbon::parse($setoran->tanggal)->toDateString(),
                 'status' => 'sudah_setor',
                 'user_id' => $setoran->user_id,
+                'totalSetoran' => $totalSetoran, // tambahan ini
             ],
         ]);
     }

@@ -61,8 +61,14 @@ Route::middleware(['auth', 'role:petugas'])->group(function () {
     Route::redirect('/petugas', '/petugas/dashboard');
 
     // Dashboard
-    Route::get('/petugas/dashboard', [PetugasDashboardController::class, 'index'])
+    Route::match(['get', 'post'], '/petugas/dashboard', [PetugasSetoranController::class, 'index'])
         ->name('petugas.dashboard');
+
+    // Ajax session pagination & search
+    Route::post('/petugas/setoran/set-page', [PetugasSetoranController::class, 'setPage'])
+        ->name('petugas.setoran.setPage');
+    Route::post('/petugas/setoran/set-search', [PetugasSetoranController::class, 'setSearch'])
+        ->name('petugas.setoran.setSearch');
 
     // Profile khusus petugas
     Route::get('/petugas/profile', [PetugasProfileController::class, 'edit'])->name('petugas.profile.edit');
@@ -124,6 +130,12 @@ Route::middleware(['auth', 'role:petugas'])->group(function () {
         // ---------- Titip Setoran ----------
         Route::match(['get', 'post'], '/titip-setoran', [TitipSetoranController::class, 'index'])
             ->name('petugas.titipsetoran.index');
+
+        // Ajax session pagination & search
+        Route::post('/titip-setoran/set-page', [PetugasSetoranController::class, 'setPage'])
+            ->name('petugas.titipsetoran.setPage');
+        Route::post('/titip-setoran/set-search', [PetugasSetoranController::class, 'setSearch'])
+            ->name('petugas.titipsetoran.setSearch');
 
         // Store titip setoran
         Route::post('/titip-setoran', [TitipSetoranController::class, 'store'])

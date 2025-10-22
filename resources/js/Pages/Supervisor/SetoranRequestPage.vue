@@ -172,24 +172,41 @@
                 </div>
 
                 <!-- Pagination Pending -->
-                <div class="mt-4 flex justify-center gap-2">
-                    <button
-                        v-for="link in pendingRequests.links"
-                        :key="link.label"
-                        @click="
-                            link.url &&
-                                goToPendingPage(
-                                    link.label.replace(/[^0-9]/g, '')
-                                )
-                        "
-                        v-html="link.label"
-                        :disabled="!link.url"
-                        class="px-3 py-1 border rounded-md hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
-                        :class="{
-                            'bg-blue-500 text-white dark:text-white':
-                                link.active,
-                        }"
-                    />
+                <div
+                    v-if="pendingRequests.last_page > 1"
+                    class="mt-6 flex justify-center dark:text-white"
+                >
+                    <nav>
+                        <ul class="flex gap-1">
+                            <li
+                                v-for="link in pendingRequests.links"
+                                :key="link.label"
+                            >
+                                <button
+                                    :disabled="!link.url"
+                                    @click="
+                                        link.url &&
+                                            goToPendingPage(
+                                                link.label.replace(
+                                                    /[^0-9]/g,
+                                                    ''
+                                                )
+                                            )
+                                    "
+                                    v-html="link.label"
+                                    class="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 text-sm transition"
+                                    :class="{
+                                        'bg-blue-600 text-white border-blue-600':
+                                            link.active,
+                                        'hover:bg-gray-200 dark:hover:bg-gray-700':
+                                            link.url,
+                                        'opacity-50 cursor-not-allowed':
+                                            !link.url,
+                                    }"
+                                ></button>
+                            </li>
+                        </ul>
+                    </nav>
                 </div>
             </section>
 
@@ -455,24 +472,38 @@
                 </div>
 
                 <!-- Pagination History -->
-                <div class="mt-4 flex justify-center gap-2">
-                    <button
-                        v-for="link in historyLinks"
-                        :key="link.label"
-                        @click.prevent="
-                            link.url &&
-                                goToHistoryPage(
-                                    link.label.replace(/[^0-9]/g, '')
-                                )
-                        "
-                        v-html="link.label"
-                        :disabled="!link.url"
-                        class="px-3 py-1 border rounded-md hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
-                        :class="{
-                            'bg-blue-500 text-white dark:text-white':
-                                link.active,
-                        }"
-                    ></button>
+                <div
+                    v-if="historyLinks && historyLinks.length > 1"
+                    class="mt-6 flex justify-center dark:text-white"
+                >
+                    <nav>
+                        <ul class="flex gap-1">
+                            <li v-for="link in historyLinks" :key="link.label">
+                                <button
+                                    :disabled="!link.url"
+                                    @click.prevent="
+                                        link.url &&
+                                            goToHistoryPage(
+                                                link.label.replace(
+                                                    /[^0-9]/g,
+                                                    ''
+                                                )
+                                            )
+                                    "
+                                    v-html="link.label"
+                                    class="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 text-sm transition"
+                                    :class="{
+                                        'bg-blue-600 text-white border-blue-600':
+                                            link.active,
+                                        'hover:bg-gray-200 dark:hover:bg-gray-700':
+                                            link.url,
+                                        'opacity-50 cursor-not-allowed':
+                                            !link.url,
+                                    }"
+                                ></button>
+                            </li>
+                        </ul>
+                    </nav>
                 </div>
             </section>
         </div>

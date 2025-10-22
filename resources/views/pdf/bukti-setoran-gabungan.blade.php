@@ -221,8 +221,36 @@
     <div class="footer">Cabang Pembantu Jatinom<br>Klaten</div> --}}
 {{-- </div> --}}
 
+<!-- === FIXED PRINT HANDLER UNTUK ANDROID 14 (Samsung A55) === -->
 <script>
-    window.onload = function() { window.print(); };
+window.onload = () => {
+    // Pastikan layout sudah siap sebelum print
+    setTimeout(() => {
+        try {
+            const beforePrint = () => console.log("Mulai print...");
+            const afterPrint = () => console.log("Selesai print.");
+
+            if (window.matchMedia) {
+                window.matchMedia('print').addListener(mql => {
+                    if (!mql.matches) afterPrint();
+                });
+            }
+
+            // Pastikan print() tidak di-block Android 14
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') afterPrint();
+            });
+
+            // Jalankan print bawaan browser
+            window.print();
+
+        } catch (err) {
+            console.error("Gagal memicu print:", err);
+            alert("Tidak bisa membuka dialog print. Coba buka di Chrome Android.");
+        }
+    }, 600); // delay 600ms biar halaman benar-benar siap
+};
 </script>
+
 </body>
 </html>

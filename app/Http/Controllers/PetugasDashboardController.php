@@ -3,82 +3,95 @@
 namespace App\Http\Controllers;
 
 use App\Models\Nasabah;
+use App\Models\Setoran;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
-use Carbon\Carbon;
 
 class PetugasDashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        /** @var \App\Models\User $user */
         $user = Auth::user();
-
-        // Ambil blok hari ini dari relasi penugasan petugas
         $blok = $user->blokHariIni?->blok;
 
-        // Jika petugas belum ada penugasan blok hari ini
         if (!$blok) {
             return Inertia::render('Petugas/Dashboard', [
-                'nasabahs' => [],
-                'setorans' => [],
-                'blok' => [
-                    'nama_blok' => 'Belum ada penugasan'
+                'nasabahs' => [
+                    'data' => [],
+                    'current_page' => 1,
+                    'last_page' => 1,
+                    'total' => 0,
+                    'links' => [],
                 ],
+                'setorans' => [],
+                'blok' => ['nama_blok' => 'Belum ada penugasan'],
                 'petugas' => $user,
+                'totalSetoranHariIni' => 0,
+                'search' => null,
             ]);
         }
 
-        // Ambil semua nasabah di blok yang ditugaskan
-        $nasabahs = Nasabah::where('blok_pasar_id', $blok->id)
+        // Ambil search & page
+        $search = $request->input('search', null);
+        $page = $request->input('page', 1);
+
+        // Query nasabah
+        $query = Nasabah::where('blok_pasar_id', $blok->id)
             ->with([
-                // Ambil semua setoran hari ini milik petugas
                 'setorans' => fn($q) => $q
-                    ->whereDate('tanggal', Carbon::today())
+                    ->whereDate('tanggal', today())
                     ->where('user_id', $user->id)
                     ->orderByDesc('id'),
-                // Ambil semua request (batal & update)
                 'setorans.requests' => fn($q) => $q->latest(),
-            ])
-            ->get();
+            ]);
 
-        // Bentuk array setoran per nasabah (map ke status yang jelas)
+        if ($search) {
+            $query->where(
+                fn($q) =>
+                $q->where('nama', 'like', "%{$search}%")
+                    ->orWhere('nama_umplung', 'like', "%{$search}%")
+            );
+        }
+
+        $nasabahs = $query->paginate(10, ['*'], 'page', $page);
+        $nasabahs->withPath(route('petugas.dashboard')); // URL tetap bersih
+
+        // Mapping setoran
         $setorans = $nasabahs->mapWithKeys(function ($nasabah) use ($user) {
-            $setoran = $nasabah->setorans->first(); // setoran terbaru hari ini
-            $latestRequest = $setoran?->requests->first(); // request terbaru
+            $setoran = $nasabah->setorans->first();
+            $latestRequest = $setoran?->requests->first();
 
-            // cek apakah ada request edit nominal pending
-            $hasPendingEdit = $setoran?->requests->contains(function ($r) {
-                return $r->status === 'pending' && $r->type === 'update';
-            }) ?? false;
-
-            // Tentukan status setoran untuk tombol batal
-            if (!$setoran) {
+            if (!$setoran)
                 $status = 'belum_setor';
-            } elseif ($latestRequest && $latestRequest->status === 'pending' && $latestRequest->type === 'batal') {
+            elseif ($latestRequest?->status === 'pending' && $latestRequest->type === 'batal')
                 $status = 'pengajuan_batal';
-            } elseif ($latestRequest && $latestRequest->status === 'rejected' && $latestRequest->type === 'batal') {
+            elseif ($latestRequest?->status === 'rejected' && $latestRequest->type === 'batal')
                 $status = 'pengajuan_batal_ditolak';
-            } elseif ($latestRequest && $latestRequest->status === 'approved' && $latestRequest->type === 'batal') {
+            elseif ($latestRequest?->status === 'approved' && $latestRequest->type === 'batal')
                 $status = 'pengajuan_batal_diterima';
-            } else {
+            else
                 $status = 'sudah_setor';
-            }
 
             return [
-                (int) $nasabah->id => [
+                $nasabah->id => [
                     'setoran_id' => $setoran->id ?? null,
                     'nasabah_id' => $nasabah->id,
                     'jumlah' => $setoran->jumlah ?? 0,
                     'tanggal' => $setoran ? Carbon::parse($setoran->tanggal)->toDateString() : null,
                     'status' => $status,
                     'user_id' => $user->id,
-                    'hasPendingEdit' => $hasPendingEdit, // <-- untuk tombol batal disable
-                ],
+                ]
             ];
         });
 
-        // Kirim data ke Vue via Inertia
+        // Total setoran hari ini
+        $totalSetoranHariIni = Setoran::where('user_id', $user->id)
+            ->whereDate('tanggal', today())
+            ->whereIn('status', ['sudah_setor', 'pengajuan_batal_ditolak'])
+            ->sum('jumlah');
+
         return Inertia::render('Petugas/Dashboard', [
             'nasabahs' => $nasabahs,
             'setorans' => $setorans,
@@ -87,6 +100,23 @@ class PetugasDashboardController extends Controller
                 'nama_blok' => $blok->nama_blok,
             ],
             'petugas' => $user,
+            'totalSetoranHariIni' => (int) $totalSetoranHariIni,
+            'search' => $search,
         ]);
+    }
+
+    // --- Endpoint untuk update page ---
+    public function setPage(Request $request)
+    {
+        session(['dashboard_page' => $request->page]);
+        return response()->json(['success' => true]);
+    }
+
+    // --- Endpoint untuk update search ---
+    public function setSearch(Request $request)
+    {
+        session(['dashboard_search' => $request->search]);
+        session(['dashboard_page' => 1]); // reset page ke 1 saat search
+        return response()->json(['success' => true]);
     }
 }

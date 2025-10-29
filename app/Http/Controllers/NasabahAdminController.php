@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Imports\NasabahImport;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Jobs\GenerateQrJob;
 use Illuminate\Support\Str;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Illuminate\Support\Facades\Storage;
@@ -270,7 +271,7 @@ class NasabahAdminController extends Controller
             'qr_token' => $token,
         ]));
 
-        $this->generateQrWithText($nasabah);
+        GenerateQrJob::dispatch($nasabah->id);
 
         // Redirect kembali → Inertia akan tangani response
         return back()->with('success', 'Nasabah ditambahkan!');
@@ -313,46 +314,72 @@ class NasabahAdminController extends Controller
             'file' => 'required|file|mimes:xlsx,xls',
         ]);
 
-        $rows = Excel::toArray(new NasabahImport, $request->file('file'))[0];
-        $inserted = 0;
+        set_time_limit(300);
+        ini_set('memory_limit', '1024M');
 
-        foreach ($rows as $index => $row) {
-            if (!isset($row['nama']) || empty(trim($row['nama'])))
+        $rows = Excel::toArray(new NasabahImport, $request->file('file'))[0];
+
+        // Cache data untuk mengurangi query
+        $blokCache = BlokPasar::pluck('id', 'nama_blok')->toArray();
+        $existingRekening = Nasabah::pluck('nomor_rekening')->flip()->toArray(); // faster lookup
+        $dataToInsert = [];
+
+        foreach ($rows as $row) {
+            if (empty(trim($row['nama'] ?? '')))
                 continue;
 
             $nomorRekening = $row['nomor_rekening'] ?? null;
             if (!$nomorRekening || !is_numeric($nomorRekening))
                 continue;
 
-            if (Nasabah::where('nomor_rekening', $nomorRekening)->exists())
+            // Cek duplikasi dengan isset (O(1) instead of in_array O(n))
+            if (isset($existingRekening[$nomorRekening]))
                 continue;
 
-            $blok = BlokPasar::firstOrCreate([
-                'nama_blok' => $row['blok'] ?? 'Tanpa Blok'
-            ]);
+            $blokNama = $row['blok'] ?? 'Tanpa Blok';
+            $blokId = $blokCache[$blokNama] ?? null;
+
+            if (!$blokId) {
+                $blok = BlokPasar::create(['nama_blok' => $blokNama]);
+                $blokId = $blok->id;
+                $blokCache[$blokNama] = $blokId;
+            }
 
             $token = (string) Str::uuid();
 
-            $nasabah = Nasabah::create([
+            $dataToInsert[] = [
                 'nama' => $row['nama'],
                 'nama_umplung' => $row['nama_umplung'] ?? '',
                 'alamat' => $row['alamat'] ?? '',
                 'nomor_hp' => $row['nomor_hp'] ?? '',
                 'nomor_rekening' => $nomorRekening,
-                'blok_pasar_id' => $blok->id,
+                'blok_pasar_id' => $blokId,
                 'uuid' => $token,
                 'qr_token' => $token,
-            ]);
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
 
-            $this->generateQrWithText($nasabah);
-            $inserted++;
+            $existingRekening[$nomorRekening] = true;
         }
 
-        if ($inserted > 0) {
-            return back()->with('success', "Import nasabah berhasil. Total: $inserted data.");
-        } else {
-            return back()->withErrors(['file' => 'Tidak ada data valid yang bisa diimport.']);
+        if (!empty($dataToInsert)) {
+            $totalInserted = 0;
+
+            foreach (array_chunk($dataToInsert, 500) as $chunk) {
+                Nasabah::insert($chunk);
+                $totalInserted += count($chunk);
+            }
+
+            // Jalankan proses generate QR di background
+            $artisanPath = base_path('artisan');
+            exec("php $artisanPath nasabah:generate-qrcodes > /dev/null 2>&1 &");
+
+            return back()->with('success', "Import nasabah berhasil. Total: {$totalInserted} data. QR code sedang diproses di background.");
         }
+
+
+        return back()->withErrors(['file' => 'Tidak ada data valid yang bisa diimport.']);
     }
 
     public function destroy($id)
@@ -373,46 +400,34 @@ class NasabahAdminController extends Controller
     /**
      * Generate QR PNG + teks nama_umplung, simpan permanen di storage/app/qrcodes.
      */
-    private function generateQrWithText(Nasabah $nasabah): void
+    // Hapus private, atau pindahkan ke service/trait
+    public function generateQrWithText(Nasabah $nasabah): void
     {
         $qrDir = storage_path('app/qrcodes');
 
-        // Pastikan direktori ada
         if (!is_dir($qrDir)) {
             mkdir($qrDir, 0755, true);
         }
 
         $token = $nasabah->qr_token;
-
-        // Tentukan teks yang mau ditulis di bawah QR
-        $text = trim((string) ($nasabah->nama_umplung ?: $nasabah->nama));
-        if ($text === '') {
-            $text = 'nasabah';
-        }
-
-        // Nama file permanen di storage
+        $text = trim((string) ($nasabah->nama_umplung ?: $nasabah->nama)) ?: 'nasabah';
         $fileName = "{$token}.png";
         $filePath = $qrDir . '/' . $fileName;
 
-        // 1) Generate QR ke temporary file
         $tempFile = tempnam(sys_get_temp_dir(), 'qr_') . '.png';
+
         QrCode::format('png')
             ->size(200)
             ->margin(1)
             ->generate(url("/nasabah/by-qr/{$token}"), $tempFile);
 
-        // 2) Tambahkan teks di bawah QR dan simpan langsung ke path permanen
         $this->addTextBelowQr($tempFile, $text, $filePath);
 
-        // 3) Hapus temporary file
         if (file_exists($tempFile)) {
             unlink($tempFile);
         }
 
-        // 4) Update kolom qr_path di database
-        $nasabah->update([
-            'qr_path' => "qrcodes/{$fileName}",
-        ]);
+        $nasabah->update(['qr_path' => "qrcodes/{$fileName}"]);
     }
 
     /**

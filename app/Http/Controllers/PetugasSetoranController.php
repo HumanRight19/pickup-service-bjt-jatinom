@@ -374,6 +374,83 @@ class PetugasSetoranController extends Controller
         ]);
     }
 
+    // // Method baru untuk generate raw ESC/POS data
+    // public function generateEscpos(Request $request)
+    // {
+    //     $user = auth()->user();
+    //     $id = session('cetak_id');
+    //     $expiresAt = session('cetak_expires_at');
+
+    //     if (!$id || !$expiresAt || now()->greaterThan($expiresAt)) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Sesi cetak sudah kedaluwarsa.'
+    //         ], 403);
+    //     }
+
+    //     $setoran = Setoran::with('nasabah.blokPasar')
+    //         ->where('id', $id)
+    //         ->where('user_id', $user->id)
+    //         ->firstOrFail();
+
+    //     try {
+    //         // Generate ESC/POS menggunakan mike42/escpos-php
+    //         $connector = new \Mike42\Escpos\PrintConnectors\DummyPrintConnector();
+    //         $printer = new \Mike42\Escpos\Printer($connector);
+
+    //         // Header
+    //         $printer->setJustification(\Mike42\Escpos\Printer::JUSTIFY_CENTER);
+    //         $printer->setEmphasis(true);
+    //         $printer->text("BUKTI SETORAN\n");
+    //         $printer->setEmphasis(false);
+    //         $printer->text("Cabang Pembantu Jatinom Klaten\n");
+    //         $printer->text(str_repeat("-", 32) . "\n");
+
+    //         // Informasi
+    //         $printer->setJustification(\Mike42\Escpos\Printer::JUSTIFY_LEFT);
+    //         $printer->text("Nama       : " . $setoran->nasabah->nama . "\n");
+    //         $printer->text("Umplung    : " . $setoran->nasabah->nama_umplung . "\n");
+    //         $printer->text("No. Rek    : " . $setoran->nasabah->no_rekening . "\n");
+    //         $printer->text("Blok       : " . ($setoran->nasabah->blokPasar->nama_blok ?? '-') . "\n");
+    //         $printer->text("Tanggal    : " . Carbon::parse($setoran->tanggal)->format('d/m/Y') . "\n");
+    //         $printer->text("Petugas    : " . $user->name . "\n");
+
+    //         $printer->text(str_repeat("-", 32) . "\n");
+
+    //         // Nominal
+    //         $printer->setEmphasis(true);
+    //         $printer->text("Jumlah     : Rp " . number_format($setoran->jumlah, 0, ',', '.') . "\n");
+    //         $printer->setEmphasis(false);
+
+    //         $printer->text(str_repeat("-", 32) . "\n");
+
+    //         // Footer
+    //         $printer->setJustification(\Mike42\Escpos\Printer::JUSTIFY_CENTER);
+    //         $printer->text("Terima Kasih\n");
+    //         $printer->feed(2);
+
+    //         // Cut paper
+    //         $printer->cut();
+    //         $printer->close();
+
+    //         // Get raw data dan encode ke base64
+    //         $rawData = $connector->getData();
+    //         $base64Data = base64_encode($rawData);
+
+    //         return response()->json([
+    //             'success' => true,
+    //             'printData' => $base64Data,
+    //             'nasabah' => $setoran->nasabah->nama,
+    //         ]);
+
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Error generate print data: ' . $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
     // Cari nasabah berdasarkan QR code
     public function findByQr($token)
     {

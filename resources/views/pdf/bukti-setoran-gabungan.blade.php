@@ -102,15 +102,13 @@
     $tanggal = now()->format('d-m-Y');
     $jam = now()->format('H:i');
 
-    // bedain field tanggal
     $tanggalSetoran = \Carbon\Carbon::parse(
         $tipe === 'titip' ? $model->tanggal_titip : $model->tanggal
     )->format('d/m/Y');
 
     $jumlahSetoran = $model->jumlah ?? 0;
-    $nasabah = $model->nasabah; // 🔑 cukup ambil dari relasi
+    $nasabah = $model->nasabah;
 
-     // 👉 fungsi format rekening
     function formatRekening($raw) {
         $digits = preg_replace('/\D+/', '', $raw);
         $n = strlen($digits);
@@ -131,6 +129,8 @@
     }
 @endphp
 
+{{-- WRAPPER UNTUK CONVERT KE PNG --}}
+<div id="struk-container">
 
 {{-- RESI PETUGAS --}}
 <div class="section">
@@ -138,10 +138,8 @@
         <tr>
             <td class="logo-cell">
                 @if(app()->runningInConsole())
-                    {{-- kalau dipanggil lewat console (PDF/dompdf) --}}
                     <img src="{{ public_path('images/logo.png') }}" alt="Logo" width="80">
                 @else
-                    {{-- kalau preview di browser --}}
                     <img src="{{ asset('images/logo.png') }}" alt="Logo" width="80">
                 @endif
             </td>
@@ -155,7 +153,6 @@
     <div class="center title-main">
         TANDA TERIMA {{ strtoupper($tipe === 'titip' ? 'TITIP SETORAN' : 'SETORAN') }}
     </div>
-    {{-- <div class="copy-title">Untuk PETUGAS</div> --}}
 
     <div class="center amount">
         Rp{{ number_format($jumlahSetoran, 0, ',', '.') }}
@@ -174,83 +171,38 @@
     <div class="footer">Cabang Pembantu Jatinom<br>Klaten</div>
 </div>
 
-{{-- PEMISAH --}}
-{{-- <div class="separator">--- POTONG DI SINI ---</div> --}}
+</div> <!-- END STRUK CONTAINER -->
 
-{{-- RESI NASABAH --}}
-{{-- <div class="section"> --}}
-    {{-- <table class="header-table"> --}}
-        {{-- <tr> --}}
-            {{-- <td class="logo-cell"> --}}
-                 {{-- @if(app()->runningInConsole()) --}}
-                    {{-- kalau dipanggil lewat console (PDF/dompdf) --}}
-                    {{-- <img src="{{ public_path('images/logo.png') }}" alt="Logo" width="80"> --}}
-                {{-- @else --}}
-                    {{-- kalau preview di browser --}}
-                    {{-- <img src="{{ asset('images/logo.png') }}" alt="Logo" width="80"> --}}
-                {{-- @endif --}}
-            {{-- </td> --}}
-            {{-- <td class="date-cell">
-                {{ $tanggal }}<br>
-                {{ $jam }}
-            </td> --}}
-        {{-- </tr> --}}
-    {{-- </table> --}}
+<button id="btnPrint" style="display:none;">Print</button>
 
-    {{-- <div class="center title-main">
-        TANDA TERIMA <br>
-        {{ strtoupper($tipe === 'titip' ? 'TITIP SETORAN' : 'SETORAN') }}
-    </div> --}}
+<!-- HTML2CANVAS LIBRARY -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
-    {{-- <div class="copy-title">Untuk NASABAH</div> --}}
-
-    {{-- <div class="center amount">
-        Rp{{ number_format($jumlahSetoran, 0, ',', '.') }}
-    </div>
-
-    <table class="data-table">
-        <tr><td class="label">Nama</td><td class="value">{{ $nasabah->nama }}</td></tr>
-        <tr><td class="label">Umplung</td><td class="value">{{ $nasabah->nama_umplung }}</td></tr>
-        <tr><td class="label">No. Rekening</td><td class="value">{{ formatRekening($nasabah->nomor_rekening) }}</td></tr>
-        <tr><td class="label">Blok</td><td class="value">{{ $nasabah->blokPasar->nama_blok ?? '-' }}</td></tr>
-        <tr><td class="label">Tanggal</td><td class="value">{{ $tanggalSetoran }}</td></tr>
-        <tr><td class="label">Petugas</td><td class="value">{{ $petugas->name }}</td></tr>
-    </table>
-
-    <div class="line"></div>
-    <div class="footer">Cabang Pembantu Jatinom<br>Klaten</div> --}}
-{{-- </div> --}}
-
-<!-- === FIXED PRINT HANDLER UNTUK ANDROID 14 (Samsung A55) === -->
 <script>
-window.onload = () => {
-    // Pastikan layout sudah siap sebelum print
-    setTimeout(() => {
-        try {
-            const beforePrint = () => console.log("Mulai print...");
-            const afterPrint = () => console.log("Selesai print.");
+    // window.onload = () => {
+    //    const element = document.getElementById('struk-container');
 
-            if (window.matchMedia) {
-                window.matchMedia('print').addListener(mql => {
-                    if (!mql.matches) afterPrint();
-                });
-            }
+        // Convert ke PNG
+    //    html2canvas(element, {
+    //       scale: 3,
+    //        backgroundColor: '#ffffff',
+    //    }).then(canvas => {
+    //        const imgData = canvas.toDataURL('image/png');
 
-            // Pastikan print() tidak di-block Android 14
-            document.addEventListener('visibilitychange', () => {
-                if (document.visibilityState === 'hidden') afterPrint();
-            });
+            // Buka tab baru untuk preview & print
+    //        const newWindow = window.open('');
+    //        newWindow.document.write('<html><head><title>Struk</title></head><body style="margin:0"><img src="' + imgData + '" style="width:100%"></body></html>');
+    //        newWindow.document.close();
+    //        newWindow.focus();
 
-            // Jalankan print bawaan browser
-            window.print();
-
-        } catch (err) {
-            console.error("Gagal memicu print:", err);
-            alert("Tidak bisa membuka dialog print. Coba buka di Chrome Android.");
-        }
-    }, 600); // delay 600ms biar halaman benar-benar siap
-};
+            // Jalankan print otomatis
+    //        setTimeout(() => {
+    //            newWindow.print();
+                // newWindow.close(); // uncomment kalau mau auto close
+    //        }, 500);
+    //    });
+    //};
+    window.onload = function() { window.print(); };
 </script>
-
 </body>
 </html>

@@ -104,6 +104,10 @@ Route::middleware(['auth', 'role:petugas'])->group(function () {
     Route::get('/petugas/setoran/preview-thermal', [PetugasSetoranController::class, 'previewThermal'])
         ->name('petugas.setoran.previewThermal');
 
+    // Tambahan untuk generate ESC/POS data
+    Route::post('/petugas/print/generate-escpos', [PetugasSetoranController::class, 'generateEscpos'])
+        ->name('petugas.print.escpos');
+
     // Cek Session Cetak (untuk auto-close tab)
     Route::get('/petugas/setoran/check-session', [PetugasSetoranController::class, 'checkSessionActive'])
         ->name('petugas.setoran.checkSession');

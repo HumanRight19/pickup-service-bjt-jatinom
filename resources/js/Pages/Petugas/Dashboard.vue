@@ -683,23 +683,105 @@ async function handlePrintClick(nasabahId) {
     }, 200);
 
     try {
-        // 1. Panggil prepareCetak dengan axios, bukan router.post
-        await axios.post(route("petugas.setoran.prepareCetak"), {
-            nasabah_id: nasabahId,
-        });
+        // 1. Prepare cetak (simpan ke session)
+        loadingProgress.value = 20;
+        const prepareResponse = await axios.post(
+            route("petugas.setoran.prepareCetak"),
+            {
+                nasabah_id: nasabahId,
+            }
+        );
 
-        // 2. Kalau sukses, buka preview tanpa query string
-        const url = route("petugas.setoran.previewThermal");
-        window.open(url, "_blank");
+        if (!prepareResponse.data.success) {
+            throw new Error("Gagal menyiapkan data cetak");
+        }
+
+        // 2. Generate ESC/POS data
+        loadingProgress.value = 50;
+        const escposResponse = await axios.post(route("petugas.print.escpos"));
+
+        if (!escposResponse.data.success) {
+            throw new Error(
+                escposResponse.data.message || "Gagal generate data printer"
+            );
+        }
+
+        loadingProgress.value = 80;
+
+        // 3. Coba kirim ke Bluetooth Printer App via Intent
+        const printData = escposResponse.data.printData;
+
+        // Opsi A: Intent untuk aplikasi Bluetooth Printer (Android)
+        const intentUrl = `intent://print?data=${encodeURIComponent(
+            printData
+        )}&type=base64#Intent;scheme=blueprinter;package=com.fidea.blueprint;end`;
+
+        // Opsi B: Custom URL scheme (fallback)
+        const customScheme = `bluetoothprinter://print?data=${encodeURIComponent(
+            printData
+        )}`;
+
+        // Coba intent dulu
+        window.location.href = intentUrl;
+
+        // Jika dalam 2 detik tidak redirect, tampilkan opsi alternatif
+        setTimeout(() => {
+            // Jika masih di halaman yang sama, berarti intent gagal
+            if (
+                confirm(
+                    "Aplikasi Bluetooth Printer tidak terdeteksi.\n\nIngin buka preview manual untuk print?"
+                )
+            ) {
+                // Fallback: buka preview thermal (cara lama yang masih berfungsi)
+                const previewUrl = route("petugas.setoran.previewThermal");
+                window.open(previewUrl, "_blank");
+            }
+        }, 2000);
+
+        loadingProgress.value = 100;
     } catch (err) {
-        console.error("Error saat prepareCetak:", err);
-        showInfoModal("Gagal menyiapkan cetak.");
+        console.error("Error saat print:", err);
+        showInfoModal(err.message || "Gagal menyiapkan cetak.");
     } finally {
         clearInterval(interval);
-        loadingProgress.value = 100;
-        setTimeout(() => (showLoadingModal.value = false), 300);
+        setTimeout(() => {
+            loadingProgress.value = 100;
+            showLoadingModal.value = false;
+        }, 500);
     }
 }
+
+// async function handlePrintClick(nasabahId) {
+//     const setoran = setoransLocal[nasabahId];
+//     if (!setoran || !setoran.setoran_id) {
+//         return showInfoModal("Setoran belum ada.");
+//     }
+
+//     // --- MULAI LOADING ---
+//     showLoadingModal.value = true;
+//     loadingProgress.value = 0;
+//     let interval = setInterval(() => {
+//         if (loadingProgress.value < 80) loadingProgress.value += 10;
+//     }, 200);
+
+//     try {
+//         // 1. Panggil prepareCetak dengan axios, bukan router.post
+//         await axios.post(route("petugas.setoran.prepareCetak"), {
+//             nasabah_id: nasabahId,
+//         });
+
+//         // 2. Kalau sukses, buka preview tanpa query string
+//         const url = route("petugas.setoran.previewThermal");
+//         window.open(url, "_blank");
+//     } catch (err) {
+//         console.error("Error saat prepareCetak:", err);
+//         showInfoModal("Gagal menyiapkan cetak.");
+//     } finally {
+//         clearInterval(interval);
+//         loadingProgress.value = 100;
+//         setTimeout(() => (showLoadingModal.value = false), 300);
+//     }
+// }
 
 // Scan QR
 function startScan() {

@@ -20,7 +20,7 @@
             <div
                 class="flex items-center justify-center h-10 w-10 rounded-full bg-blue-600 text-white font-bold text-xl flex-shrink-0"
             >
-                🧑‍💼
+                <UserCheck class="w-6 h-6" />
             </div>
             <transition name="fade">
                 <span v-if="open" class="ml-3 text-lg font-semibold truncate">
@@ -32,13 +32,13 @@
         <!-- Menu -->
         <nav class="flex-1 overflow-y-auto py-4 flex flex-col gap-1">
             <PetugasSidebarItem
-                icon="🏠"
+                icon="home"
                 label="Dashboard"
                 href="/petugas/dashboard"
                 :expanded="open"
             />
             <PetugasSidebarItem
-                icon="📦"
+                icon="package"
                 label="Titip Setoran"
                 href="/petugas/titip-setoran"
                 :expanded="open"
@@ -50,6 +50,7 @@
 <script setup>
 import PetugasSidebarItem from "./PetugasSidebarItem.vue";
 import { ref, onMounted } from "vue";
+import { UserCheck } from "lucide-vue-next";
 
 const props = defineProps({ open: Boolean });
 const isMobile = ref(false);
@@ -64,14 +65,11 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Smooth slide for mobile */
 @media (max-width: 767px) {
     aside {
         transition: transform 0.3s ease-in-out;
     }
 }
-
-/* Fade effect for sidebar text */
 .fade-enter-active,
 .fade-leave-active {
     transition: opacity 0.2s ease;

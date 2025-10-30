@@ -6,18 +6,16 @@
             'bg-gray-50 dark:bg-gray-950',
         ]"
     >
-        <!-- Sidebar Header (nyambung navbar) -->
+        <!-- Header -->
         <div
             class="flex items-center px-4 h-14 bg-blue-800 dark:bg-blue-900 text-white shadow-md rounded-bl-2xl"
         >
-            <!-- Logo bulat tetap -->
             <div
                 class="flex items-center justify-center h-10 w-10 rounded-full bg-blue-600 text-white font-bold text-xl flex-shrink-0"
             >
                 📚
             </div>
 
-            <!-- Teks hanya muncul kalau sidebar open -->
             <transition name="fade">
                 <span v-if="open" class="ml-3 text-lg font-semibold truncate">
                     Pick Up Service
@@ -25,40 +23,42 @@
             </transition>
         </div>
 
-        <!-- Menu -->
-        <nav class="flex-1 overflow-y-auto py-4 flex flex-col gap-1">
+        <!-- Menu modernized -->
+        <nav
+            class="flex-1 overflow-y-auto py-5 flex flex-col gap-1 px-2 text-gray-700 dark:text-gray-200"
+        >
             <SidebarItem
-                icon="🏠"
+                icon="home"
                 label="Dashboard"
                 href="/supervisor/dashboard"
                 :expanded="open"
             />
             <SidebarItem
-                icon="🧑‍💼"
+                icon="calendarcheck"
                 label="Penugasan Harian"
                 href="/supervisor/penugasan"
                 :expanded="open"
             />
             <SidebarItem
-                icon="👥"
+                icon="users"
                 label="Nasabah"
                 href="/supervisor/nasabah"
                 :expanded="open"
             />
             <SidebarItem
-                icon="🧱"
+                icon="grid"
                 label="Blok Pasar"
                 href="/supervisor/blok"
                 :expanded="open"
             />
             <SidebarItem
-                icon="📊"
+                icon="bookopentext"
                 label="Laporan Lengkap"
                 href="/supervisor/laporan"
                 :expanded="open"
             />
             <SidebarItem
-                icon="💸"
+                icon="banknote"
                 label="Batal / Update Setoran"
                 href="/supervisor/setoran-requests"
                 :expanded="open"

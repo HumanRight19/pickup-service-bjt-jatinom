@@ -161,7 +161,7 @@
                             </tr>
                             <tr v-if="pendingRequestsData.length === 0">
                                 <td
-                                    colspan="8"
+                                    colspan="10"
                                     class="text-center text-gray-500 py-4"
                                 >
                                     Tidak ada pending request

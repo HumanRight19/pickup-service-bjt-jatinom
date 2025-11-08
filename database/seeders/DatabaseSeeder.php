@@ -16,7 +16,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             PerbaikiSupervisorIdSeeder::class,
             BlokSeeder::class,
-            NasabahSeeder::class,
+            // NasabahSeeder::class,
             // SeederGabunganSetoranTitipan::class,
             // RealisticSetoranSeeder::class,
             // TitipSetoranSeeder::class, // 👈 ini harus ada

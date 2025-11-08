@@ -303,7 +303,10 @@ class NasabahAdminController extends Controller
             ]);
         }
 
-        $nasabah->update($request->all());
+        // ❗ Pastikan token & uuid tidak ikut diubah
+        $data = $request->except(['uuid', 'qr_token', 'qr_path']);
+
+        $nasabah->update($data);
 
         return back()->with('success', 'Nasabah diperbarui!');
     }

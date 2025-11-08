@@ -22,9 +22,19 @@ class Nasabah extends Model
 
         // Hapus QR code saat model dihapus
         static::deleting(function ($nasabah) {
-            // Pastikan qr_path ada sebelum hapus file
-            if (!empty($nasabah->qr_path) && Storage::disk('local')->exists($nasabah->qr_path)) {
-                Storage::disk('local')->delete($nasabah->qr_path);
+            $filename = "{$nasabah->qr_token}.png";
+
+            // Coba dua kemungkinan lokasi (container & host)
+            $paths = [
+                storage_path("app/qrcodes/{$filename}"),
+                base_path("storage/app/qrcodes/{$filename}"),
+            ];
+
+            foreach ($paths as $path) {
+                if (file_exists($path)) {
+                    unlink($path);
+                    break;
+                }
             }
         });
     }
